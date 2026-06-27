@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 interface Match {
   match_id: number
@@ -46,27 +46,22 @@ interface ScoutResult {
   scouting_report: string
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 const TEAM_COLORS: Record<string, string> = {
-  'Brazil': '#F59E0B',
-  'Belgium': '#EF4444',
-  'France': '#3B82F6',
-  'Croatia': '#F97316',
-  'England': '#E2E8F0',
-  'Argentina': '#60A5FA',
-  'Germany': '#38BDF8',
-  'Spain': '#F87171',
-  'Portugal': '#4ADE80',
-  'Uruguay': '#93C5FD',
-  'Canada': '#10B981',
-  'Morocco': '#F59E0B',
-  'Japan': '#EF4444',
-  'Netherlands': '#F97316',
-  'Senegal': '#A78BFA',
-  'United States': '#60A5FA',
-  'Australia': '#FBBF24',
-  'Switzerland': '#F87171',
-  'default1': '#10B981',
-  'default2': '#F97316',
+  'Brazil': '#F59E0B', 'Belgium': '#EF4444', 'France': '#3B82F6',
+  'Croatia': '#F97316', 'England': '#E2E8F0', 'Argentina': '#60A5FA',
+  'Germany': '#38BDF8', 'Spain': '#F87171', 'Portugal': '#4ADE80',
+  'Uruguay': '#93C5FD', 'Canada': '#10B981', 'Morocco': '#FBBF24',
+  'Japan': '#EF4444', 'Netherlands': '#F97316', 'Senegal': '#A78BFA',
+  'United States': '#60A5FA', 'Australia': '#FBBF24', 'Switzerland': '#F87171',
+  'Poland': '#E2E8F0', 'South Korea': '#EF4444', 'Tunisia': '#EF4444',
+  'Cameroon': '#4ADE80', 'Ghana': '#F59E0B', 'Ecuador': '#F59E0B',
+  'Qatar': '#8B5CF6', 'Iran': '#4ADE80', 'Saudi Arabia': '#4ADE80',
+  'default1': '#10B981', 'default2': '#F97316',
 }
 
 const TYPE_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
@@ -76,6 +71,18 @@ const TYPE_CONFIG: Record<string, { color: string; bg: string; label: string }> 
   'Substitution': { color: '#8B5CF6', bg: 'rgba(139,92,246,0.18)', label: 'Sub' },
   'Shot':         { color: '#38BDF8', bg: 'rgba(56,189,248,0.14)', label: 'Shot' },
 }
+
+const LANGUAGES = [
+  ['en','🇬🇧 English'], ['es','🇪🇸 Español'], ['fr','🇫🇷 Français'],
+  ['de','🇩🇪 Deutsch'], ['pt','🇧🇷 Português'], ['ar','🇸🇦 العربية'],
+  ['ja','🇯🇵 日本語'], ['hi','🇮🇳 हिन्दी'], ['it','🇮🇹 Italiano'],
+]
+
+const SUGGESTED = [
+  "What's a false nine?", "How does the offside rule work?",
+  "Who won the 2022 World Cup?", "What is a penalty shootout?",
+  "Why was VAR introduced?", "What does 'pressing' mean in football?",
+]
 
 const modules = ['TacticalLens', 'Scout Eye', 'VAR Oracle', 'Match Explainer', 'Fan Decoder', 'EmotiPulse']
 
@@ -94,6 +101,11 @@ export default function Home() {
   const [heroAnimDone, setHeroAnimDone] = useState(false)
   const [mode, setMode] = useState<'beginner'|'fan'|'coach'>('fan')
   const [expandedMoment, setExpandedMoment] = useState<number|null>(null)
+  const [fanHistory, setFanHistory] = useState<ChatMessage[]>([])
+  const [fanQuestion, setFanQuestion] = useState('')
+  const [fanLoading, setFanLoading] = useState(false)
+  const [fanLang, setFanLang] = useState('en')
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setHeroAnimDone(true), 3200)
@@ -104,6 +116,10 @@ export default function Home() {
     fetch('http://localhost:8001/matches')
       .then(r => r.json()).then(setMatches).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [fanHistory, fanLoading])
 
   const loadMatch = async (m: Match) => {
     setSelectedMatch(m)
@@ -140,6 +156,24 @@ export default function Home() {
     setScoutLoading(false)
   }
 
+  const askFanDecoder = async (q?: string) => {
+    const question = q || fanQuestion
+    if (!question.trim()) return
+    setFanQuestion('')
+    setFanHistory(h => [...h, { role: 'user', content: question }])
+    setFanLoading(true)
+    try {
+      const res = await fetch('http://localhost:8001/fan-decoder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, language: fanLang, history: fanHistory })
+      })
+      const data = await res.json()
+      setFanHistory(h => [...h, { role: 'assistant', content: data.answer }])
+    } catch(e) {}
+    setFanLoading(false)
+  }
+
   const getColor = (team: string, index: number) =>
     TEAM_COLORS[team] || (index === 0 ? TEAM_COLORS['default1'] : TEAM_COLORS['default2'])
 
@@ -165,28 +199,19 @@ export default function Home() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Bebas+Neue&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
-          --bg:    #090C14;
-          --bg2:   #0E1220;
-          --bg3:   #131828;
-          --bg4:   #182030;
-          --bg5:   #1E2840;
-          --bd:    rgba(255,255,255,0.07);
-          --bd2:   rgba(255,255,255,0.12);
-          --bd3:   rgba(255,255,255,0.18);
-          --t1:    #EEF2FF;
-          --t2:    #7A8FB8;
-          --t3:    #3A4A70;
-          --green: #10B981;
-          --green2:#34D399;
-          --gold:  #F59E0B;
+          --bg:    #090C14; --bg2:   #0E1220; --bg3:   #131828;
+          --bg4:   #182030; --bg5:   #1E2840;
+          --bd:    rgba(255,255,255,0.07); --bd2:   rgba(255,255,255,0.12); --bd3:   rgba(255,255,255,0.18);
+          --t1:    #EEF2FF; --t2:    #7A8FB8; --t3:    #3A4A70;
+          --green: #10B981; --green2:#34D399; --gold:  #F59E0B;
         }
-        body { background: var(--bg); color: var(--t1); font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.5; overflow-x: hidden; }
+        body { background:var(--bg); color:var(--t1); font-family:'Inter',sans-serif; font-size:13px; line-height:1.5; overflow-x:hidden; }
 
-        .hero { position: fixed; inset: 0; z-index: 999; background: #000; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s ease 0.2s; }
-        .hero.out { opacity: 0; pointer-events: none; }
-        .hero-svg { position: absolute; inset: 0; width: 100%; height: 100%; animation: hzoom 3.2s cubic-bezier(0.16,1,0.3,1) forwards; }
+        .hero { position:fixed; inset:0; z-index:999; background:#000; display:flex; align-items:center; justify-content:center; transition:opacity 0.8s ease 0.2s; }
+        .hero.out { opacity:0; pointer-events:none; }
+        .hero-svg { position:absolute; inset:0; width:100%; height:100%; animation:hzoom 3.2s cubic-bezier(0.16,1,0.3,1) forwards; }
         @keyframes hzoom { 0%{transform:scale(0.22) translateY(-10%);opacity:0} 25%{opacity:1} 100%{transform:scale(2.1) translateY(6%);opacity:0} }
-        .hero-txt { position: relative; z-index: 1; text-align: center; animation: htxt 3.2s ease forwards; }
+        .hero-txt { position:relative; z-index:1; text-align:center; animation:htxt 3.2s ease forwards; }
         @keyframes htxt { 0%{opacity:0;transform:translateY(12px)} 18%{opacity:1;transform:translateY(0)} 75%{opacity:1} 100%{opacity:0} }
         .hero-h { font-family:'Bebas Neue',sans-serif; font-size:clamp(56px,9vw,96px); letter-spacing:0.14em; color:var(--green); line-height:1; }
         .hero-s { font-size:11px; font-weight:700; letter-spacing:0.3em; text-transform:uppercase; color:var(--t3); margin-top:10px; }
@@ -214,7 +239,6 @@ export default function Home() {
         .content { padding:14px 20px; }
 
         .tac { display:grid; grid-template-columns:256px 1fr; gap:12px; height:calc(100vh - 150px); }
-
         .fpanel { background:var(--bg2); border:1px solid var(--bd); border-radius:8px; overflow:hidden; display:flex; flex-direction:column; }
         .phd { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-bottom:1px solid var(--bd); background:var(--bg); flex-shrink:0; }
         .pttl { font-size:10px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:var(--green); }
@@ -242,7 +266,7 @@ export default function Home() {
         .sb-name { font-size:15px; font-weight:900; letter-spacing:0.05em; text-transform:uppercase; text-align:center; line-height:1.2; }
         .sb-role { font-size:10px; font-weight:600; color:var(--t3); letter-spacing:0.08em; text-transform:uppercase; }
         .sb-ctr { text-align:center; flex-shrink:0; }
-        .sb-score { font-family:'Bebas Neue',sans-serif; font-size:42px; letter-spacing:0.08em; color:var(--t1); line-height:1; display:flex; align-items:center; gap:10px; justify-content:center; }
+        .sb-score { font-family:'Bebas Neue',sans-serif; font-size:42px; letter-spacing:0.08em; line-height:1; display:flex; align-items:center; gap:10px; justify-content:center; }
         .sb-sep { color:var(--t3); font-size:30px; }
         .sb-date { font-size:10px; font-weight:600; color:var(--t3); margin-top:5px; letter-spacing:0.06em; }
 
@@ -312,6 +336,7 @@ export default function Home() {
         .nmico { font-size:44px; opacity:0.08; }
         .nmtxt { font-size:10px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--t3); }
 
+        /* SCOUT */
         .sp { max-width:840px; }
         .shdr { margin-bottom:22px; }
         .sey { font-size:10px; font-weight:700; letter-spacing:0.22em; text-transform:uppercase; color:var(--green); margin-bottom:5px; }
@@ -342,6 +367,37 @@ export default function Home() {
         .srlbl { font-size:9px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; color:var(--green); margin-bottom:7px; }
         .srtxt { font-size:13px; color:var(--t2); line-height:1.75; }
 
+        /* FAN DECODER */
+        .fd-page { max-width:720px; margin:0 auto; }
+        .fd-langs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; }
+        .fd-lang { padding:5px 12px; border-radius:16px; border:1px solid var(--bd2); background:none; color:var(--t2); font-size:11px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.12s; }
+        .fd-lang:hover { border-color:var(--bd3); color:var(--t1); }
+        .fd-lang.on { background:var(--green); color:#000; border-color:var(--green); }
+        .fd-suggested { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:20px; }
+        .fd-sug { padding:7px 14px; border-radius:6px; border:1px solid var(--bd2); background:var(--bg2); color:var(--t2); font-size:12px; font-weight:500; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.12s; }
+        .fd-sug:hover { background:var(--bg3); color:var(--t1); border-color:var(--bd3); }
+        .fd-chat { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; max-height:420px; overflow-y:auto; padding-right:4px; }
+        .fd-chat::-webkit-scrollbar { width:2px; }
+        .fd-chat::-webkit-scrollbar-thumb { background:var(--bg5); }
+        .fd-bubble-wrap-u { display:flex; justify-content:flex-end; }
+        .fd-bubble-wrap-a { display:flex; justify-content:flex-start; }
+        .fd-bubble-u { max-width:75%; padding:10px 14px; border-radius:8px; background:var(--green); color:#000; font-size:13px; line-height:1.65; font-weight:600; }
+        .fd-bubble-a { max-width:80%; padding:10px 14px; border-radius:8px; background:var(--bg2); border:1px solid var(--bd); color:var(--t1); font-size:13px; line-height:1.65; }
+        .fd-bubble-lbl { font-size:9px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; color:var(--green); margin-bottom:6px; }
+        .fd-thinking { padding:10px 14px; border-radius:8px; background:var(--bg2); border:1px solid var(--bd); color:var(--t3); font-size:12px; display:inline-flex; align-items:center; gap:6px; }
+        .fd-dot { width:5px; height:5px; border-radius:50%; background:var(--green); animation:fdot 1.2s ease infinite; }
+        .fd-dot:nth-child(2) { animation-delay:0.2s; }
+        .fd-dot:nth-child(3) { animation-delay:0.4s; }
+        @keyframes fdot { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+        .fd-input-row { display:flex; gap:0; }
+        .fd-input { flex:1; background:var(--bg2); border:1px solid var(--bd2); border-right:none; padding:12px 16px; font-size:13px; font-weight:500; color:var(--t1); outline:none; font-family:'Inter',sans-serif; border-radius:6px 0 0 6px; transition:border-color 0.12s; }
+        .fd-input::placeholder { color:var(--t3); }
+        .fd-input:focus { border-color:var(--green); }
+        .fd-ask { padding:12px 24px; background:var(--green); color:#000; font-size:11px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; border:none; cursor:pointer; border-radius:0 6px 6px 0; transition:background 0.1s; font-family:'Inter',sans-serif; white-space:nowrap; }
+        .fd-ask:hover { background:#34D399; }
+        .fd-ask:disabled { background:var(--bg5); color:var(--t3); cursor:not-allowed; }
+
+        /* COMING */
         .coming { display:flex; flex-direction:column; align-items:center; justify-content:center; height:60vh; gap:8px; }
         .comingh { font-family:'Bebas Neue',sans-serif; font-size:52px; letter-spacing:0.1em; color:var(--bg5); }
         .comings { font-size:10px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--t3); }
@@ -404,6 +460,8 @@ export default function Home() {
         </div>
 
         <div className="content">
+
+          {/* TACTICAL LENS */}
           {activeModule==='TacticalLens' && (
             <div className="tac">
               <div className="fpanel">
@@ -442,13 +500,9 @@ export default function Home() {
                       </div>
                       <div className="sb-ctr">
                         <div className="sb-score">
-                          <span style={{color:getColor(selectedMatch.home_team,0)}}>
-                            {selectedMatch.home_score ?? '—'}
-                          </span>
+                          <span style={{color:getColor(selectedMatch.home_team,0)}}>{selectedMatch.home_score??'—'}</span>
                           <span className="sb-sep">:</span>
-                          <span style={{color:getColor(selectedMatch.away_team,1)}}>
-                            {selectedMatch.away_score ?? '—'}
-                          </span>
+                          <span style={{color:getColor(selectedMatch.away_team,1)}}>{selectedMatch.away_score??'—'}</span>
                         </div>
                         <div className="sb-date">{selectedMatch.match_date} · World Cup</div>
                       </div>
@@ -628,6 +682,7 @@ export default function Home() {
             </div>
           )}
 
+          {/* SCOUT EYE */}
           {activeModule==='Scout Eye'&&(
             <div className="sp">
               <div className="shdr">
@@ -671,12 +726,74 @@ export default function Home() {
             </div>
           )}
 
-          {!['TacticalLens','Scout Eye'].includes(activeModule)&&(
+          {/* FAN DECODER */}
+          {activeModule==='Fan Decoder'&&(
+            <div className="fd-page">
+              <div className="shdr">
+                <div className="sey">Module 05 · Multilingual AI</div>
+                <div className="sh1">Fan Decoder</div>
+                <div className="sp2">Ask anything about football or the World Cup. Get clear answers in your language, grounded in real match data.</div>
+              </div>
+
+              <div className="fd-langs">
+                {LANGUAGES.map(([code,label])=>(
+                  <button key={code} className={`fd-lang${fanLang===code?' on':''}`} onClick={()=>setFanLang(code)}>{label}</button>
+                ))}
+              </div>
+
+              {fanHistory.length===0&&(
+                <div className="fd-suggested">
+                  {SUGGESTED.map(q=>(
+                    <button key={q} className="fd-sug" onClick={()=>askFanDecoder(q)}>{q}</button>
+                  ))}
+                </div>
+              )}
+
+              <div className="fd-chat">
+                {fanHistory.map((msg,i)=>(
+                  <div key={i} className={`fd-bubble-wrap-${msg.role==='user'?'u':'a'}`}>
+                    {msg.role==='user'?(
+                      <div className="fd-bubble-u">{msg.content}</div>
+                    ):(
+                      <div className="fd-bubble-a">
+                        <div className="fd-bubble-lbl">AI Analyst</div>
+                        {msg.content}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {fanLoading&&(
+                  <div className="fd-bubble-wrap-a">
+                    <div className="fd-thinking">
+                      <div className="fd-dot"/><div className="fd-dot"/><div className="fd-dot"/>
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef}/>
+              </div>
+
+              <div className="fd-input-row">
+                <input
+                  className="fd-input"
+                  type="text"
+                  value={fanQuestion}
+                  onChange={e=>setFanQuestion(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&askFanDecoder()}
+                  placeholder="Ask anything about football or the World Cup..."
+                />
+                <button className="fd-ask" onClick={()=>askFanDecoder()} disabled={fanLoading||!fanQuestion.trim()}>Ask</button>
+              </div>
+            </div>
+          )}
+
+          {/* COMING SOON */}
+          {!['TacticalLens','Scout Eye','Fan Decoder'].includes(activeModule)&&(
             <div className="coming">
               <div className="comingh">{activeModule}</div>
               <div className="comings">Module in development</div>
             </div>
           )}
+
         </div>
       </div>
     </>

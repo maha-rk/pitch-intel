@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.tactical_lens import get_world_cup_matches, get_key_moments, get_momentum
 from backend.tactical_lens.heatmap import generate_heatmap_data
 from backend.scout_eye import search_players
+from backend.fan_decoder import decode_question
 
 app = FastAPI(title="Pitch Intel API")
 
@@ -53,3 +54,11 @@ async def startup_event():
         except Exception as e:
             print(f"Cache warm failed: {e}")
     threading.Thread(target=warm_cache, daemon=True).start()
+
+@app.post("/fan-decoder")
+def fan_decoder(body: dict):
+    question = body.get('question', '')
+    language = body.get('language', 'en')
+    history = body.get('history', [])
+    answer = decode_question(question, language, history)
+    return {"answer": answer}
