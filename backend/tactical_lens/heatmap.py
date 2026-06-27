@@ -1,0 +1,33 @@
+import json
+from . import get_player_positions, narrate_tactical_moment
+
+def generate_heatmap_data(match_id: int, minute: int):
+    positions = get_player_positions(match_id)
+    
+    # Filter to 5-minute window
+    window = [p for p in positions if abs(p['minute'] - minute) <= 5]
+    
+    # Keep only the LATEST position per player
+    latest = {}
+    for p in window:
+        player = p.get('player', 'Unknown')
+        if player not in latest or p['minute'] > latest[player]['minute']:
+            latest[player] = p
+    
+    # Group by team
+    teams = {}
+    for p in latest.values():
+        team = p.get('team', 'Unknown')
+        if team not in teams:
+            teams[team] = []
+        teams[team].append({'x': p['x'], 'y': p['y'], 'player': p['player'], 'minute': p['minute']})
+    
+    # Get AI narration
+    narration = narrate_tactical_moment(match_id, minute)
+    
+    return {
+        'match_id': match_id,
+        'minute': minute,
+        'teams': teams,
+        'narration': narration
+    }
