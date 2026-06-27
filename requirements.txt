@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+statsbombpy
+sentence-transformers
+faiss-cpu
+groq
+python-dotenv
+pandas
+numpy
+requests
+python-multipart
+opencv-python-headless
+ultralytics
+docling

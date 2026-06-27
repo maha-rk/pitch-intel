@@ -1,6 +1,10 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
+import FanDecoder from './FanDecoder'
+import MatchExplainer from './MatchExplainer'
+import VAROracle from './VAROracle'
+import EmotiPulse from './EmotiPulse'
 
 interface Match {
   match_id: number
@@ -46,11 +50,6 @@ interface ScoutResult {
   scouting_report: string
 }
 
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-
 const TEAM_COLORS: Record<string, string> = {
   'Brazil': '#F59E0B', 'Belgium': '#EF4444', 'France': '#3B82F6',
   'Croatia': '#F97316', 'England': '#E2E8F0', 'Argentina': '#60A5FA',
@@ -72,18 +71,6 @@ const TYPE_CONFIG: Record<string, { color: string; bg: string; label: string }> 
   'Shot':         { color: '#38BDF8', bg: 'rgba(56,189,248,0.14)', label: 'Shot' },
 }
 
-const LANGUAGES = [
-  ['en','🇬🇧 English'], ['es','🇪🇸 Español'], ['fr','🇫🇷 Français'],
-  ['de','🇩🇪 Deutsch'], ['pt','🇧🇷 Português'], ['ar','🇸🇦 العربية'],
-  ['ja','🇯🇵 日本語'], ['hi','🇮🇳 हिन्दी'], ['it','🇮🇹 Italiano'],
-]
-
-const SUGGESTED = [
-  "What's a false nine?", "How does the offside rule work?",
-  "Who won the 2022 World Cup?", "What is a penalty shootout?",
-  "Why was VAR introduced?", "What does 'pressing' mean in football?",
-]
-
 const modules = ['TacticalLens', 'Scout Eye', 'VAR Oracle', 'Match Explainer', 'Fan Decoder', 'EmotiPulse']
 
 export default function Home() {
@@ -101,12 +88,6 @@ export default function Home() {
   const [heroAnimDone, setHeroAnimDone] = useState(false)
   const [mode, setMode] = useState<'beginner'|'fan'|'coach'>('fan')
   const [expandedMoment, setExpandedMoment] = useState<number|null>(null)
-  const [fanHistory, setFanHistory] = useState<ChatMessage[]>([])
-  const [fanQuestion, setFanQuestion] = useState('')
-  const [fanLoading, setFanLoading] = useState(false)
-  const [fanLang, setFanLang] = useState('en')
-  const chatEndRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     const t = setTimeout(() => setHeroAnimDone(true), 3200)
     return () => clearTimeout(t)
@@ -116,10 +97,6 @@ export default function Home() {
     fetch('http://localhost:8001/matches')
       .then(r => r.json()).then(setMatches).catch(() => {})
   }, [])
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [fanHistory, fanLoading])
 
   const loadMatch = async (m: Match) => {
     setSelectedMatch(m)
@@ -154,24 +131,6 @@ export default function Home() {
       setScoutResults(data)
     } catch(e) {}
     setScoutLoading(false)
-  }
-
-  const askFanDecoder = async (q?: string) => {
-    const question = q || fanQuestion
-    if (!question.trim()) return
-    setFanQuestion('')
-    setFanHistory(h => [...h, { role: 'user', content: question }])
-    setFanLoading(true)
-    try {
-      const res = await fetch('http://localhost:8001/fan-decoder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, language: fanLang, history: fanHistory })
-      })
-      const data = await res.json()
-      setFanHistory(h => [...h, { role: 'assistant', content: data.answer }])
-    } catch(e) {}
-    setFanLoading(false)
   }
 
   const getColor = (team: string, index: number) =>
@@ -726,68 +685,20 @@ export default function Home() {
             </div>
           )}
 
+          {/* VAR ORACLE */}
+          {activeModule==='VAR Oracle'&&(<VAROracle />)}
+
+          {/* MATCH EXPLAINER */}
+          {activeModule==='Match Explainer'&&(<MatchExplainer matches={matches} />)}
+
           {/* FAN DECODER */}
-          {activeModule==='Fan Decoder'&&(
-            <div className="fd-page">
-              <div className="shdr">
-                <div className="sey">Module 05 · Multilingual AI</div>
-                <div className="sh1">Fan Decoder</div>
-                <div className="sp2">Ask anything about football or the World Cup. Get clear answers in your language, grounded in real match data.</div>
-              </div>
+          {activeModule==='Fan Decoder'&&(<FanDecoder />)}
 
-              <div className="fd-langs">
-                {LANGUAGES.map(([code,label])=>(
-                  <button key={code} className={`fd-lang${fanLang===code?' on':''}`} onClick={()=>setFanLang(code)}>{label}</button>
-                ))}
-              </div>
-
-              {fanHistory.length===0&&(
-                <div className="fd-suggested">
-                  {SUGGESTED.map(q=>(
-                    <button key={q} className="fd-sug" onClick={()=>askFanDecoder(q)}>{q}</button>
-                  ))}
-                </div>
-              )}
-
-              <div className="fd-chat">
-                {fanHistory.map((msg,i)=>(
-                  <div key={i} className={`fd-bubble-wrap-${msg.role==='user'?'u':'a'}`}>
-                    {msg.role==='user'?(
-                      <div className="fd-bubble-u">{msg.content}</div>
-                    ):(
-                      <div className="fd-bubble-a">
-                        <div className="fd-bubble-lbl">AI Analyst</div>
-                        {msg.content}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {fanLoading&&(
-                  <div className="fd-bubble-wrap-a">
-                    <div className="fd-thinking">
-                      <div className="fd-dot"/><div className="fd-dot"/><div className="fd-dot"/>
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef}/>
-              </div>
-
-              <div className="fd-input-row">
-                <input
-                  className="fd-input"
-                  type="text"
-                  value={fanQuestion}
-                  onChange={e=>setFanQuestion(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&askFanDecoder()}
-                  placeholder="Ask anything about football or the World Cup..."
-                />
-                <button className="fd-ask" onClick={()=>askFanDecoder()} disabled={fanLoading||!fanQuestion.trim()}>Ask</button>
-              </div>
-            </div>
-          )}
+          {/* EMOTIPULSE */}
+          {activeModule==='EmotiPulse'&&(<EmotiPulse matches={matches} />)}
 
           {/* COMING SOON */}
-          {!['TacticalLens','Scout Eye','Fan Decoder'].includes(activeModule)&&(
+          {!['TacticalLens','Scout Eye','VAR Oracle','Match Explainer','Fan Decoder','EmotiPulse'].includes(activeModule)&&(
             <div className="coming">
               <div className="comingh">{activeModule}</div>
               <div className="comings">Module in development</div>
