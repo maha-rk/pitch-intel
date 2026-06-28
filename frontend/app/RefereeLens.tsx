@@ -19,6 +19,9 @@ interface MatchRecord {
   reds: number
   fouls: number
   shots: number
+  home_fouls: number
+  away_fouls: number
+  foul_symmetry: number
 }
 
 interface RefereeReport {
@@ -30,6 +33,8 @@ interface RefereeReport {
   avg_reds_per_match: number
   avg_fouls_per_match: number
   avg_shots_per_match: number
+  avg_foul_symmetry: number
+  home_bias_index: number
   matches: MatchRecord[]
   ai_report: string
 }
@@ -106,7 +111,7 @@ export default function RefereeLens() {
               style={{
                 padding: '9px 12px', borderBottom: '1px solid var(--bd)', cursor: 'pointer',
                 borderLeft: `3px solid ${selected?.name === ref.name ? 'var(--green)' : 'transparent'}`,
-                background: selected?.name === ref.name ? 'rgba(16,185,129,0.06)' : 'transparent',
+                background: selected?.name === ref.name ? '#0A1D14' : 'transparent',
                 transition: 'all 0.1s',
               }}
               onMouseEnter={e => { if (selected?.name !== ref.name) e.currentTarget.style.background = 'var(--bg3)' }}
@@ -170,6 +175,48 @@ export default function RefereeLens() {
                   ))}
                 </div>
 
+                {/* Foul Symmetry / Fairness metric */}
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden' }}>
+                  <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)' }}>Foul Symmetry · Fairness Metric</span>
+                    <span style={{ fontSize: 10, color: 'var(--t3)' }}>1.0 = perfectly equal whistle both sides</span>
+                  </div>
+                  <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t3)', marginBottom: 6 }}>Symmetry Index</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, color: report.avg_foul_symmetry >= 0.8 ? '#10B981' : report.avg_foul_symmetry >= 0.6 ? '#F59E0B' : '#EF4444', lineHeight: 1 }}>
+                          {report.avg_foul_symmetry.toFixed(2)}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ height: 6, background: 'var(--bg4)', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${report.avg_foul_symmetry * 100}%`, background: report.avg_foul_symmetry >= 0.8 ? '#10B981' : report.avg_foul_symmetry >= 0.6 ? '#F59E0B' : '#EF4444', borderRadius: 3, transition: 'width 0.5s ease' }} />
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--t3)', marginTop: 4 }}>
+                            {report.avg_foul_symmetry >= 0.8 ? 'Highly consistent whistle' : report.avg_foul_symmetry >= 0.6 ? 'Moderate asymmetry detected' : 'Significant foul imbalance'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t3)', marginBottom: 6 }}>Home Bias Index</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, color: report.home_bias_index <= 0.35 ? '#10B981' : report.home_bias_index <= 0.6 ? '#F59E0B' : '#EF4444', lineHeight: 1 }}>
+                          {Math.round(report.home_bias_index * 100)}%
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ height: 6, background: 'var(--bg4)', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${report.home_bias_index * 100}%`, background: report.home_bias_index <= 0.35 ? '#10B981' : report.home_bias_index <= 0.6 ? '#F59E0B' : '#EF4444', borderRadius: 3, transition: 'width 0.5s ease' }} />
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--t3)', marginTop: 4 }}>
+                            matches where home team had more fouls called
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* AI consistency report */}
                 <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden' }}>
                   <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -188,38 +235,54 @@ export default function RefereeLens() {
 
                 {/* Match log */}
                 <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden' }}>
-                  <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)' }}>
+                  <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)' }}>Match Log</span>
+                    <span style={{ fontSize: 10, color: 'var(--t3)' }}>Foul bar shows home vs away split</span>
                   </div>
                   <div>
-                    {report.matches.map((m, i) => (
-                      <div key={m.match_id} style={{
-                        display: 'grid', gridTemplateColumns: '1fr auto auto auto auto',
-                        gap: 14, alignItems: 'center', padding: '9px 16px',
-                        borderBottom: i < report.matches.length - 1 ? '1px solid var(--bd)' : 'none',
-                      }}>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t1)' }}>{m.home} {m.score} {m.away}</div>
-                          <div style={{ fontSize: 10, color: 'var(--t3)', marginTop: 1 }}>{m.date} · {m.stage}</div>
+                    {report.matches.map((m, i) => {
+                      const totalF = m.home_fouls + m.away_fouls || 1
+                      const symColor = m.foul_symmetry >= 0.8 ? '#10B981' : m.foul_symmetry >= 0.6 ? '#F59E0B' : '#EF4444'
+                      return (
+                        <div key={m.match_id} style={{
+                          display: 'grid', gridTemplateColumns: '1fr 80px auto auto auto auto',
+                          gap: 12, alignItems: 'center', padding: '9px 16px',
+                          borderBottom: i < report.matches.length - 1 ? '1px solid var(--bd)' : 'none',
+                        }}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t1)' }}>{m.home} {m.score} {m.away}</div>
+                            <div style={{ fontSize: 10, color: 'var(--t3)', marginTop: 1 }}>{m.date} · {m.stage}</div>
+                          </div>
+                          {/* Foul split bar */}
+                          <div style={{ minWidth: 80 }}>
+                            <div style={{ fontSize: 9, color: 'var(--t3)', marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
+                              <span>{m.home_fouls}H</span><span>{m.away_fouls}A</span>
+                            </div>
+                            <div style={{ height: 5, background: 'var(--bg4)', borderRadius: 2, overflow: 'hidden', display: 'flex' }}>
+                              <div style={{ height: '100%', width: `${(m.home_fouls / totalF) * 100}%`, background: '#3B82F6', borderRadius: '2px 0 0 2px' }} />
+                              <div style={{ height: '100%', width: `${(m.away_fouls / totalF) * 100}%`, background: '#F59E0B', borderRadius: '0 2px 2px 0' }} />
+                            </div>
+                            <div style={{ fontSize: 8, color: symColor, marginTop: 2, textAlign: 'center' }}>{m.foul_symmetry.toFixed(2)}</div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: '#F59E0B' }}>{m.yellows}</div>
+                            <div style={{ fontSize: 9, color: 'var(--t3)' }}>Yellow</div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>{m.reds}</div>
+                            <div style={{ fontSize: 9, color: 'var(--t3)' }}>Red</div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--t2)' }}>{m.fouls}</div>
+                            <div style={{ fontSize: 9, color: 'var(--t3)' }}>Fouls</div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--t2)' }}>{m.shots}</div>
+                            <div style={{ fontSize: 9, color: 'var(--t3)' }}>Shots</div>
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: '#F59E0B' }}>{m.yellows}</div>
-                          <div style={{ fontSize: 9, color: 'var(--t3)' }}>Yellow</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>{m.reds}</div>
-                          <div style={{ fontSize: 9, color: 'var(--t3)' }}>Red</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--t2)' }}>{m.fouls}</div>
-                          <div style={{ fontSize: 9, color: 'var(--t3)' }}>Fouls</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--t2)' }}>{m.shots}</div>
-                          <div style={{ fontSize: 9, color: 'var(--t3)' }}>Shots</div>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               </>

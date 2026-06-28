@@ -12,7 +12,10 @@ MODEL = os.getenv('GRANITE_MODEL', 'llama-3.3-70b-versatile')
 LANGUAGE_NAMES = {
     'en': 'English', 'es': 'Spanish', 'fr': 'French',
     'de': 'German', 'pt': 'Portuguese', 'ar': 'Arabic',
-    'ja': 'Japanese', 'hi': 'Hindi', 'it': 'Italian'
+    'ja': 'Japanese', 'hi': 'Hindi', 'it': 'Italian',
+    'nl': 'Dutch', 'ru': 'Russian', 'ko': 'Korean',
+    'zh': 'Chinese', 'tr': 'Turkish', 'pl': 'Polish',
+    'sv': 'Swedish',
 }
 
 def get_world_cup_context():

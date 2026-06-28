@@ -115,11 +115,12 @@ def match_verdict(match_id: int, home_team: str, away_team: str, home_score: int
         home_mom = sum(p['score'] for p in mom if p.get('team') == home_team)
         away_mom = sum(p['score'] for p in mom if p.get('team') == away_team)
         subs = [m for m in moments if m.get('type') == 'Substitution']
+        goal_strs = [str(g.get('minute')) + "' " + str(g.get('player')) + " (" + str(g.get('team')) + ")" for g in goals]
         context = (
             f"Match: {home_team} {home_score} – {away_score} {away_team}\n"
             f"xG: {home_team} {home_xg:.2f} vs {away_team} {away_xg:.2f}\n"
             f"Momentum index: {home_team} {home_mom:.0f} vs {away_team} {away_mom:.0f}\n"
-            f"Goals: {[f\"{g.get('minute')}' {g.get('player')} ({g.get('team')})\" for g in goals]}\n"
+            f"Goals: {goal_strs}\n"
             f"Substitutions: {len(subs)} total"
         )
         resp = groq.chat.completions.create(
@@ -133,21 +134,34 @@ def match_verdict(match_id: int, home_team: str, away_team: str, home_score: int
 
 @app.get("/explainer/{match_id}")
 def explainer(match_id: int, home_team: str, away_team: str, match_date: str, briefing_type: str = 'post'):
-    return generate_match_briefing(match_id, home_team, away_team, match_date, briefing_type)
+    from fastapi.responses import JSONResponse
+    try:
+        return generate_match_briefing(match_id, home_team, away_team, match_date, briefing_type)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={'error': str(e)})
 
 @app.get("/emotipulse/{match_id}")
 def emotipulse(match_id: int, home_team: str, away_team: str):
     from backend.emoti_pulse import generate_emoti_pulse
-    return generate_emoti_pulse(match_id, home_team, away_team)
+    from fastapi.responses import JSONResponse
+    try:
+        return generate_emoti_pulse(match_id, home_team, away_team)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={'error': str(e)})
 
 @app.post("/var-oracle/analyse")
 async def var_oracle_analyse(file: UploadFile = File(...)):
     from backend.var_oracle import analyse_clip
+    from fastapi.responses import JSONResponse
     suffix = os.path.splitext(file.filename or 'clip.mp4')[1] or '.mp4'
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(await file.read())
         tmp_path = tmp.name
     try:
         return analyse_clip(tmp_path, filename=file.filename or '')
+    except ValueError as e:
+        return JSONResponse(status_code=422, content={'error': str(e), 'detail': 'OpenCV could not open the video file. Ensure it is a valid MP4/MOV/AVI clip.'})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={'error': str(e)})
     finally:
         os.unlink(tmp_path)

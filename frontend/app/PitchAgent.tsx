@@ -24,13 +24,13 @@ interface AgentMessage {
   loading?: boolean
 }
 
-const TOOL_META: Record<string, { label: string; icon: string; color: string }> = {
-  get_momentum:    { label: 'Momentum Data',    icon: '📈', color: '#3B82F6' },
-  get_xg_flow:     { label: 'xG Flow',          icon: '⚽', color: '#10B981' },
-  get_key_moments: { label: 'Key Moments',       icon: '⚡', color: '#F59E0B' },
-  get_pass_network:{ label: 'Pass Network',      icon: '🔗', color: '#8B5CF6' },
-  get_emotion_arc: { label: 'Emotion Arc',       icon: '🌡', color: '#EF4444' },
-  search_players:  { label: 'Player Search',     icon: '🔍', color: '#F97316' },
+const TOOL_META: Record<string, { label: string; icon: string; color: string; desc: string }> = {
+  get_momentum:    { label: 'Momentum Data',    icon: '📈', color: '#3B82F6', desc: 'Minute-by-minute pressure & possession flow across 90 minutes' },
+  get_xg_flow:     { label: 'xG Flow',          icon: '⚽', color: '#10B981', desc: 'Expected goals per shot — assesses chance quality and who deserved to win' },
+  get_key_moments: { label: 'Key Moments',       icon: '⚡', color: '#F59E0B', desc: 'Goals, cards, substitutions — the chronological match story' },
+  get_pass_network:{ label: 'Pass Network',      icon: '🔗', color: '#8B5CF6', desc: 'Passing connections and average positions — reveals team shape and playmakers' },
+  get_emotion_arc: { label: 'Emotion Arc',       icon: '🌡', color: '#EF4444', desc: 'Match intensity arc based on event scoring — dramatic peaks and atmosphere' },
+  search_players:  { label: 'Player Search',     icon: '🔍', color: '#F97316', desc: 'Semantic search across 6000+ players by role, style, or stat profile' },
 }
 
 const SUGGESTIONS = [
@@ -40,6 +40,8 @@ const SUGGESTIONS = [
   'What were the biggest turning points?',
   'How intense was this match emotionally?',
   'Find me a clinical striker with high xG under pressure',
+  'What if the red card hadn\'t happened — how would momentum have shifted?',
+  'What if the match went to extra time — which team had more left in the tank?',
 ]
 
 function ToolCallBadge({ tc }: { tc: ToolCall }) {
@@ -93,6 +95,7 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
   const [loading, setLoading] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [matchOpen, setMatchOpen] = useState(false)
+  const [toolRegistryOpen, setToolRegistryOpen] = useState(false)
 
   const ask = async (q: string) => {
     const question = q.trim()
@@ -153,8 +156,8 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
           <div style={{ display: 'flex', gap: 5 }}>
             {['IBM Granite', 'Tool Use', 'StatsBomb'].map(tag => (
               <span key={tag} style={{
-                padding: '2px 8px', background: 'rgba(16,185,129,0.08)',
-                border: '1px solid rgba(16,185,129,0.2)', borderRadius: 3,
+                padding: '2px 8px', background: '#0E2A1C',
+                border: '1px solid #1A5535', borderRadius: 3,
                 fontSize: 9, fontWeight: 700, color: 'var(--green)', letterSpacing: '0.06em'
               }}>{tag}</span>
             ))}
@@ -167,6 +170,42 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
           Ask any question about World Cup matches. IBM Granite reasons over real StatsBomb data —
           momentum flows, xG models, passing networks, player stats — and shows you exactly which data it used.
         </div>
+      </div>
+
+      {/* Tool Registry Panel */}
+      <div style={{ marginBottom: 16 }}>
+        <button
+          onClick={() => setToolRegistryOpen(o => !o)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+            background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: toolRegistryOpen ? '6px 6px 0 0' : 6,
+            padding: '8px 14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--green)' }}>Tool Registry</span>
+          <span style={{ fontSize: 10, color: 'var(--t3)' }}>· {Object.keys(TOOL_META).length} IBM Granite tools available</span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--t3)' }}>{toolRegistryOpen ? '▲' : '▼'}</span>
+        </button>
+        {toolRegistryOpen && (
+          <div style={{ border: '1px solid var(--bd)', borderTop: 'none', borderRadius: '0 0 6px 6px', background: 'var(--bg)', overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+              {Object.entries(TOOL_META).map(([key, meta], i) => (
+                <div key={key} style={{
+                  padding: '12px 14px',
+                  borderRight: i % 3 !== 2 ? '1px solid var(--bd)' : 'none',
+                  borderBottom: i < Object.keys(TOOL_META).length - 3 ? '1px solid var(--bd)' : 'none',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                    <span style={{ fontSize: 14 }}>{meta.icon}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: meta.color }}>{meta.label}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--t3)', lineHeight: 1.55 }}>{meta.desc}</div>
+                  <div style={{ marginTop: 5, fontSize: 9, fontFamily: 'monospace', color: 'var(--t3)', opacity: 0.6 }}>{key}()</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Match context selector */}

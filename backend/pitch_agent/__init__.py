@@ -183,6 +183,9 @@ def _call_tool(name: str, args: dict) -> str:
 
 
 def run_agent(question: str, match_context: dict | None = None) -> dict:
+    q_lower = question.lower().strip()
+    is_counterfactual = any(q_lower.startswith(pfx) for pfx in ('what if', 'what would', 'if the', 'suppose', 'imagine if', 'had the'))
+
     system = (
         "You are Pitch Intel — an elite AI football analyst powered by IBM Granite. "
         "You have access to real StatsBomb World Cup data via tools. "
@@ -191,6 +194,14 @@ def run_agent(question: str, match_context: dict | None = None) -> dict:
         "Your analysis should be insightful, concise, and grounded entirely in the numbers. "
         "Use analyst language — not generic commentary."
     )
+
+    if is_counterfactual:
+        system += (
+            "\n\nCOUNTERFACTUAL MODE: The user is asking a 'what if' scenario. "
+            "First retrieve the actual match data with tools, then reason about how removing or changing the stated event would have altered momentum, xG trajectory, and likely outcome. "
+            "Ground your counterfactual in the real data: cite the actual momentum scores, which team was dominating before/after the event, and what the xG gap was. "
+            "Be explicit: 'Based on real data, at minute X the momentum shifted to Y with a score of Z — without this event, ...'"
+        )
 
     if match_context:
         system += (

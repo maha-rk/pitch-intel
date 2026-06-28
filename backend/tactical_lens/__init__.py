@@ -126,6 +126,7 @@ def get_shot_map(match_id: int):
             'team': _tl_name(row.get('team', '')),
             'player': _tl_name(row.get('player', '')),
             'outcome': _tl_name(row.get('shot_outcome', '')),
+            'shot_type': _tl_name(row.get('shot_type', '')),
             'xg': round(xg, 3),
             'minute': int(row.get('minute', 0)),
         })

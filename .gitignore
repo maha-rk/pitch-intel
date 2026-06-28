@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Model weights
+*.pt
+
+# Nested portfolio repo (not part of this project)
+mlh-fellowship-portfolio-site/

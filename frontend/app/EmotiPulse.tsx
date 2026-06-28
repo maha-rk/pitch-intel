@@ -30,10 +30,10 @@ interface EmotiData {
 }
 
 const INTENSITY_CFG = {
-  THRILLER:       { color: '#EF4444', bg: 'rgba(239,68,68,0.10)',   glow: '#EF4444' },
-  'HIGH INTENSITY':{ color: '#F59E0B', bg: 'rgba(245,158,11,0.10)', glow: '#F59E0B' },
-  COMPETITIVE:    { color: '#10B981', bg: 'rgba(16,185,129,0.10)',  glow: '#10B981' },
-  CONTROLLED:     { color: '#6B7280', bg: 'rgba(107,114,128,0.10)', glow: '#6B7280' },
+  THRILLER:       { color: '#F87171', bg: '#450A0A', glow: '#EF4444' },
+  'HIGH INTENSITY':{ color: '#FBBF24', bg: '#451A03', glow: '#F59E0B' },
+  COMPETITIVE:    { color: '#4ADE80', bg: '#14532D', glow: '#22C55E' },
+  CONTROLLED:     { color: '#9CA3AF', bg: '#1F2937', glow: '#6B7280' },
 }
 
 function PulseChart({ arc, maxScore, intensity }: { arc: ArcPoint[], maxScore: number, intensity: string }) {
@@ -241,7 +241,7 @@ export default function EmotiPulse({ matches }: { matches: Match[] }) {
 
       {/* ── Error ── */}
       {error && (
-        <div style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '14px 18px' }}>
+        <div style={{ background: '#2D0D0D', border: '1px solid #7B2020', borderRadius: 8, padding: '14px 18px' }}>
           <span style={{ fontSize: 11, fontWeight: 800, color: '#EF4444' }}>Error — </span>
           <span style={{ fontSize: 12, color: 'var(--t2)' }}>{error}</span>
         </div>

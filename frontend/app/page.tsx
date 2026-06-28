@@ -54,7 +54,7 @@ interface ScoutResult {
 }
 
 interface XgPoint { minute: number; team: string; xg: number; outcome: string; player: string }
-interface ShotPoint { x: number; y: number; team: string; player: string; outcome: string; xg: number; minute: number }
+interface ShotPoint { x: number; y: number; team: string; player: string; outcome: string; shot_type: string; xg: number; minute: number }
 interface PassConn  { from: string; to: string; team: string; count: number }
 interface PassNetwork { connections: PassConn[]; positions: Record<string,{x:number;y:number;team:string}>; formations?: Record<string,string> }
 
@@ -72,17 +72,17 @@ const TEAM_COLORS: Record<string, string> = {
 }
 
 const TYPE_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
-  'Goal':         { color: '#10B981', bg: 'rgba(16,185,129,0.18)', label: 'Goal' },
-  'Yellow Card':  { color: '#F59E0B', bg: 'rgba(245,158,11,0.18)', label: 'Yellow' },
-  'Red Card':     { color: '#EF4444', bg: 'rgba(239,68,68,0.18)',  label: 'Red' },
-  'Substitution': { color: '#8B5CF6', bg: 'rgba(139,92,246,0.18)', label: 'Sub' },
-  'Shot':         { color: '#38BDF8', bg: 'rgba(56,189,248,0.14)', label: 'Shot' },
+  'Goal':         { color: '#4ADE80', bg: '#14532D', label: 'Goal' },
+  'Yellow Card':  { color: '#FBBF24', bg: '#451A03', label: 'Yellow' },
+  'Red Card':     { color: '#F87171', bg: '#450A0A', label: 'Red' },
+  'Substitution': { color: '#C4B5FD', bg: '#2E1065', label: 'Sub' },
+  'Shot':         { color: '#7DD3FC', bg: '#0C2A4A', label: 'Shot' },
 }
 
-const modules = ['TacticalLens', 'Scout Eye', 'VAR Oracle', 'Match Explainer', 'Fan Decoder', 'EmotiPulse', 'Pitch Agent', 'Referee Lens']
+const modules = ['VAR Oracle', 'TacticalLens', 'Pitch Agent', 'Scout Eye', 'Referee Lens', 'Match Explainer', 'EmotiPulse', 'Fan Decoder']
 
 export default function Home() {
-  const [activeModule, setActiveModule] = useState('TacticalLens')
+  const [activeModule, setActiveModule] = useState('VAR Oracle')
   const [matches, setMatches] = useState<Match[]>([])
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [minute, setMinute] = useState(45)
@@ -98,7 +98,7 @@ export default function Home() {
   const [entering, setEntering] = useState(false)
   const [mode, setMode] = useState<'beginner'|'fan'|'coach'>('fan')
   const [expandedMoment, setExpandedMoment] = useState<number|null>(null)
-  const [tacticsView, setTacticsView] = useState<'overview'|'xg'|'shots'|'passes'>('overview')
+  const [tacticsView, setTacticsView] = useState<'overview'|'xg'|'shots'|'passes'|'penalties'>('overview')
   const [xgFlow, setXgFlow] = useState<XgPoint[]>([])
   const [shotMap, setShotMap] = useState<ShotPoint[]>([])
   const [passNetwork, setPassNetwork] = useState<PassNetwork|null>(null)
@@ -201,12 +201,16 @@ export default function Home() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Bebas+Neue&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
-          --bg:  #0B1218; --bg2: #111827; --bg3: #1A2130;
-          --bg4: #1F2937; --bg5: #273447;
-          --bd:  #1F2937; --bd2: #2D3A4E; --bd3: #3D4E68;
-          --t1: #F3F4F6; --t2: #9CA3AF; --t3: #4B5563;
-          --green: #22C55E; --green2:#4ADE80; --gold: #FACC15;
+          --bg:  #070C14; --bg2: #0D1525; --bg3: #152035;
+          --bg4: #1B2A42; --bg5: #243348;
+          --bd:  #1E2D42; --bd2: #2A3D58; --bd3: #3A5270;
+          --t1: #F1F5F9; --t2: #94A3B8; --t3: #4A5568;
+          --green: #22C55E; --green2:#4ADE80; --gold: #EAB308;
           --red: #EF4444; --blue: #3B82F6;
+          --g-chip: #0E2A1C; --g-border: #1A5535;
+          --r-chip: #2D0D0D; --r-border: #7B2020;
+          --a-chip: #2D1900; --a-border: #7A3800;
+          --b-chip: #0C1E3D; --b-border: #1E3A6E;
         }
         body { background:var(--bg); color:var(--t1); font-family:'Inter',sans-serif; font-size:13px; line-height:1.5; overflow-x:hidden; -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums; }
 
@@ -215,7 +219,7 @@ export default function Home() {
         .hero-svg { position:fixed; inset:0; width:100%; height:100%; opacity:0.18; pointer-events:none; }
         .lp-wrap { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:0 32px 48px; }
         .lp-hero { padding:64px 0 48px; }
-        .lp-eyebrow { display:inline-flex; align-items:center; gap:7px; font-size:9px; font-weight:800; letter-spacing:0.22em; text-transform:uppercase; color:var(--green); background:rgba(0,212,106,0.07); border:1px solid rgba(0,212,106,0.18); padding:5px 12px; border-radius:2px; margin-bottom:24px; }
+        .lp-eyebrow { display:inline-flex; align-items:center; gap:7px; font-size:9px; font-weight:800; letter-spacing:0.22em; text-transform:uppercase; color:var(--green); background:var(--g-chip); border:1px solid var(--g-border); padding:5px 12px; border-radius:2px; margin-bottom:24px; }
         .lp-eyebrow-dot { width:5px; height:5px; background:var(--green); border-radius:50%; animation:lpb 1.4s ease infinite; flex-shrink:0; }
         .lp-title { font-family:'Bebas Neue',sans-serif; font-size:108px; letter-spacing:0.06em; color:var(--t1); line-height:0.9; margin:0 0 20px; }
         .lp-title-accent { color:var(--green); }
@@ -255,7 +259,7 @@ export default function Home() {
         .nbtn.on { color:var(--t1); border-bottom-color:var(--green); }
         .topbar-r { margin-left:auto; display:flex; align-items:center; gap:10px; flex-shrink:0; padding-left:20px; border-left:1px solid rgba(255,255,255,0.07); }
         .tourn { font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--t3); }
-        .live { display:flex; align-items:center; gap:5px; background:rgba(0,212,106,0.08); color:var(--green); border:1px solid rgba(0,212,106,0.18); font-size:8px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; padding:5px 11px; border-radius:2px; }
+        .live { display:flex; align-items:center; gap:5px; background:var(--g-chip); color:var(--green); border:1px solid var(--g-border); font-size:8px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; padding:5px 11px; border-radius:2px; }
         .lpip { width:5px; height:5px; background:var(--green); border-radius:50%; animation:lpb 1.4s ease infinite; }
         @keyframes lpb { 0%,100%{opacity:1} 50%{opacity:0.15} }
 
@@ -269,13 +273,13 @@ export default function Home() {
         .fpanel { background:var(--bg2); border-radius:6px; overflow:hidden; display:flex; flex-direction:column; border:1px solid var(--bd); }
         .phd { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--bd); background:var(--bg3); flex-shrink:0; }
         .pttl { font-size:9px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; color:var(--t2); }
-        .pct { font-size:9px; font-weight:700; color:var(--green); background:rgba(0,212,106,0.08); border:1px solid rgba(0,212,106,0.14); padding:1px 7px; border-radius:2px; }
+        .pct { font-size:9px; font-weight:700; color:var(--green); background:var(--g-chip); border:1px solid var(--g-border); padding:1px 7px; border-radius:2px; }
         .flist { overflow-y:auto; flex:1; }
         .flist::-webkit-scrollbar { width:2px; }
         .flist::-webkit-scrollbar-thumb { background:var(--bg5); }
         .frow { display:flex; align-items:center; justify-content:space-between; padding:9px 14px; border-bottom:1px solid var(--bd); border-left:2px solid transparent; cursor:pointer; transition:background 0.12s,transform 0.12s; gap:10px; }
         .frow:hover { background:var(--bg3); transform:translateX(2px); }
-        .frow.sel { background:rgba(0,212,106,0.04); border-left-color:var(--green); transform:none; }
+        .frow.sel { background:#0A1D15; border-left-color:var(--green); transform:none; }
         .frow-info { flex:1; min-width:0; }
         .fn { font-size:11px; font-weight:600; color:var(--t1); line-height:1.3; }
         .fvs { color:var(--t3); font-size:9px; font-weight:500; margin:0 4px; }
@@ -296,7 +300,7 @@ export default function Home() {
         .sb-name { font-family:'Bebas Neue',sans-serif; font-size:34px; letter-spacing:0.06em; text-transform:uppercase; text-align:center; line-height:1.05; color:var(--t1); }
         .sb-role { font-size:8px; font-weight:700; color:var(--t3); letter-spacing:0.18em; text-transform:uppercase; }
         .sb-ctr { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:14px 28px; border-left:1px solid var(--bd); border-right:1px solid var(--bd); background:var(--bg); }
-        .sb-badge { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:var(--green); background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.2); padding:3px 10px; border-radius:2px; }
+        .sb-badge { font-size:8px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:var(--green); background:var(--g-chip); border:1px solid var(--g-border); padding:3px 10px; border-radius:2px; }
         .sb-score { font-family:'Bebas Neue',sans-serif; font-size:90px; letter-spacing:0.02em; line-height:1; display:flex; align-items:center; gap:6px; justify-content:center; }
         .sb-sep { color:var(--t3); font-size:48px; line-height:1; }
         .sb-date { font-size:8px; font-weight:600; color:var(--t3); letter-spacing:0.1em; text-transform:uppercase; }
@@ -311,7 +315,7 @@ export default function Home() {
         .mode-row { display:flex; gap:3px; }
         .mbtn { padding:5px 14px; font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; border-radius:2px; border:1px solid var(--bd); background:var(--bg2); color:var(--t3); cursor:pointer; transition:all 0.12s; font-family:'Inter',sans-serif; }
         .mbtn:hover { color:var(--t2); border-color:var(--bd2); }
-        .mbtn.on { background:rgba(0,212,106,0.1); color:var(--green); border-color:rgba(0,212,106,0.2); }
+        .mbtn.on { background:var(--g-chip); color:var(--green); border-color:var(--g-border); }
         .mode-hint { font-size:9px; color:var(--t3); letter-spacing:0.02em; }
 
         .overview-row { display:grid; grid-template-columns:260px 1fr; gap:14px; flex-shrink:0; align-items:start; }
@@ -374,7 +378,7 @@ export default function Home() {
         .ai-panel-hd { display:flex; align-items:center; justify-content:space-between; padding:9px 14px; border-bottom:1px solid var(--bd); }
         .ai-panel-lbl { display:flex; align-items:center; gap:8px; font-size:9px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:var(--t2); }
         .ai-ibm { background:#1D4ED8; color:#fff; font-size:7px; font-weight:900; letter-spacing:0.1em; padding:2px 6px; border-radius:2px; }
-        .ai-conf { font-size:9px; font-weight:800; letter-spacing:0.08em; color:var(--green); background:rgba(0,198,83,0.08); border:1px solid rgba(0,198,83,0.2); padding:2px 8px; border-radius:3px; }
+        .ai-conf { font-size:9px; font-weight:800; letter-spacing:0.08em; color:var(--green); background:var(--g-chip); border:1px solid var(--g-border); padding:2px 8px; border-radius:3px; }
         .ai-panel-body { padding:12px 14px; }
         .ai-panel-txt { font-size:12px; color:var(--t2); line-height:1.75; }
         .mom-insight { margin-top:10px; padding:8px 12px; background:var(--bg3); border:1px solid var(--bd); border-left:3px solid var(--green); border-radius:0 4px 4px 0; font-size:11px; color:var(--t2); line-height:1.6; }
@@ -486,7 +490,7 @@ export default function Home() {
         .intro-txt { position:relative; z-index:1; text-align:center; animation:htxt 3.2s ease forwards; }
         @keyframes htxt { 0%{opacity:0;transform:translateY(12px)} 18%{opacity:1;transform:translateY(0)} 75%{opacity:1} 100%{opacity:0} }
         .intro-h { font-family:'Bebas Neue',sans-serif; font-size:clamp(56px,9vw,96px); letter-spacing:0.14em; color:var(--green); line-height:1; }
-        .intro-s { font-size:11px; font-weight:700; letter-spacing:0.3em; text-transform:uppercase; color:var(--t3); margin-top:10px; }
+        .intro-s { font-size:15px; font-weight:600; letter-spacing:0.28em; text-transform:uppercase; color:#94A3B8; margin-top:14px; }
 
         /* ENTER ANIMATION */
         .enter-anim { position:fixed; inset:0; z-index:1000; background:#000; display:flex; align-items:center; justify-content:center; pointer-events:none; animation:eafade 1.6s ease forwards; }
@@ -496,28 +500,26 @@ export default function Home() {
         .enter-anim-txt { position:relative; z-index:1; text-align:center; animation:eatxt 1.6s ease forwards; }
         @keyframes eatxt { 0%{opacity:0;transform:translateY(12px)} 18%{opacity:1;transform:translateY(0)} 75%{opacity:1} 100%{opacity:0} }
         .enter-anim-h { font-family:'Bebas Neue',sans-serif; font-size:clamp(56px,9vw,96px); letter-spacing:0.14em; color:var(--green); line-height:1; }
-        .enter-anim-s { font-size:11px; font-weight:700; letter-spacing:0.3em; text-transform:uppercase; color:var(--t3); margin-top:10px; }
+        .enter-anim-s { font-size:15px; font-weight:600; letter-spacing:0.28em; text-transform:uppercase; color:#94A3B8; margin-top:14px; }
       `}</style>
 
       {/* INTRO ANIMATION — auto-plays on load */}
       <div className={`intro${introPlayed?' out':''}`}>
         <svg className="intro-svg" viewBox="0 0 1000 680" preserveAspectRatio="xMidYMid slice">
           <rect width="1000" height="680" fill="#04070A"/>
-          <ellipse cx="500" cy="340" rx="480" ry="310" fill="#0A0A20"/>
-          <ellipse cx="500" cy="340" rx="480" ry="310" fill="none" stroke="#111135" strokeWidth="50"/>
           {Array.from({length:13},(_,i)=>(
-            <rect key={i} x="115" y={90+i*40} width="770" height="40" fill={i%2===0?'#0C200C':'#091809'}/>
+            <rect key={i} x="115" y={90+i*40} width="770" height="40" fill={i%2===0?'#0D2810':'#0A1C0D'}/>
           ))}
-          <rect x="115" y="90" width="770" height="510" fill="none" stroke="#1A4A1A" strokeWidth="2"/>
-          <line x1="500" y1="92" x2="500" y2="598" stroke="#1A4A1A" strokeWidth="2"/>
-          <circle cx="500" cy="345" r="85" fill="none" stroke="#1A4A1A" strokeWidth="2"/>
-          <circle cx="500" cy="345" r="4" fill="#1A4A1A"/>
-          <rect x="115" y="205" width="145" height="280" fill="none" stroke="#1A4A1A" strokeWidth="2"/>
-          <rect x="740" y="205" width="145" height="280" fill="none" stroke="#1A4A1A" strokeWidth="2"/>
-          <rect x="115" y="275" width="52" height="140" fill="none" stroke="#1A4A1A" strokeWidth="1.5"/>
-          <rect x="833" y="275" width="52" height="140" fill="none" stroke="#1A4A1A" strokeWidth="1.5"/>
-          <rect x="88" y="308" width="27" height="76" fill="#080820" stroke="#222245" strokeWidth="1.5"/>
-          <rect x="885" y="308" width="27" height="76" fill="#080820" stroke="#222245" strokeWidth="1.5"/>
+          <rect x="115" y="90" width="770" height="510" fill="none" stroke="#1E6830" strokeWidth="2"/>
+          <line x1="500" y1="92" x2="500" y2="598" stroke="#1E6830" strokeWidth="2"/>
+          <circle cx="500" cy="345" r="85" fill="none" stroke="#1E6830" strokeWidth="2"/>
+          <circle cx="500" cy="345" r="5" fill="#1E6830"/>
+          <rect x="115" y="205" width="145" height="280" fill="none" stroke="#1E6830" strokeWidth="2"/>
+          <rect x="740" y="205" width="145" height="280" fill="none" stroke="#1E6830" strokeWidth="2"/>
+          <rect x="115" y="275" width="52" height="140" fill="none" stroke="#1E6830" strokeWidth="1.5"/>
+          <rect x="833" y="275" width="52" height="140" fill="none" stroke="#1E6830" strokeWidth="1.5"/>
+          <rect x="88" y="308" width="27" height="76" fill="#091A0C" stroke="#1E6830" strokeWidth="1.5"/>
+          <rect x="885" y="308" width="27" height="76" fill="#091A0C" stroke="#1E6830" strokeWidth="1.5"/>
           {([[150,100],[850,100],[150,590],[850,590]] as [number,number][]).map(([x,y],i)=>(
             <g key={i}>
               <rect x={x-3} y={y-20} width="6" height="20" fill="#666"/>
@@ -561,13 +563,13 @@ export default function Home() {
           <div className="lp-hero">
             <div className="lp-eyebrow"><div className="lp-eyebrow-dot"/>FIFA World Cup · AI Command Center</div>
             <h1 className="lp-title">PITCH<br/><span className="lp-title-accent">INTEL</span></h1>
-            <p className="lp-sub">Real StatsBomb event data. IBM Granite reasoning. Eight working modules across 128 matches — and it shows you exactly how it thinks.</p>
+            <p className="lp-sub">Upload a match clip — YOLOv8 reads it, IBM Docling pulls the exact FIFA law, IBM Granite delivers the verdict. That&apos;s one of eight modules.</p>
             <div className="lp-diff">
               {([
-                {n:'128', l1:'WC Matches', l2:'2018 + 2022 full data', c:'#00D46A'},
+                {n:'128', l1:'WC Matches', l2:'2018 + 2022 · StatsBomb', c:'#00D46A'},
+                {n:'3',   l1:'IBM Tech Stack', l2:'Granite · Docling · YOLOv8', c:'#F97316'},
                 {n:'6K+', l1:'Players Indexed', l2:'FAISS semantic search', c:'#06B6D4'},
-                {n:'9',   l1:'Languages', l2:'Fan Decoder', c:'#EC4899'},
-                {n:'5',   l1:'Tool-call depth', l2:'Pitch Agent reasoning', c:'#3B7CF6'},
+                {n:'9',   l1:'Languages', l2:'Fan Decoder chatbot', c:'#EC4899'},
               ] as {n:string;l1:string;l2:string;c:string}[]).map(({n,l1,l2,c})=>(
                 <div key={l1} className="lp-diff-item" style={{borderLeftColor:c,borderLeftWidth:3}}>
                   <div className="lp-diff-n" style={{color:c}}>{n}</div>
@@ -584,14 +586,14 @@ export default function Home() {
           <div className="lp-section-lbl">8 Working Modules · IBM Granite Powers All</div>
           <div className="lp-grid">
             {([
-              {name:'TacticalLens',   desc:'xG flow, shot maps, pass networks, auto-detected formations from StatsBomb event data',       tag:'StatsBomb Events',   c:'#3B7CF6'},
+              {name:'VAR Oracle',     desc:'YOLOv8 reads footage frame-by-frame · IBM Docling extracts the exact FIFA law clause · IBM Granite delivers a verdict with the law text visible',tag:'YOLOv8 · Docling · Granite', c:'#F97316'},
+              {name:'TacticalLens',   desc:'xG flow, shot maps, pass networks, auto-detected formations, penalty analysis, and match verdict from StatsBomb event data', tag:'StatsBomb Events',   c:'#3B7CF6'},
+              {name:'Pitch Agent',    desc:'IBM Granite agent with 6 real StatsBomb tools — full reasoning chain visible, What-If counterfactuals grounded in real data', tag:'Tool Use · Agentic', c:'#00D46A'},
               {name:'Scout Eye',      desc:'Natural-language search across 6,000+ WC players — FAISS embeddings, AI scouting reports',    tag:'FAISS · Semantic',   c:'#06B6D4'},
-              {name:'VAR Oracle',     desc:'YOLOv8 incident detection + FIFA Laws grounded via IBM Docling PDF parse',                    tag:'YOLOv8 · Docling',   c:'#F97316'},
+              {name:'Referee Lens',   desc:'Foul symmetry index + home bias metric across all 128 matches — AI consistency verdict per referee', tag:'128 Match Analysis', c:'#F59E0B'},
               {name:'Match Explainer',desc:'Pre/post briefings grounded in real StatsBomb stats — Beginner, Fan, and Coach modes',        tag:'3 Audience Modes',   c:'#8B5CF6'},
-              {name:'Fan Decoder',    desc:'Football AI chatbot in 9 languages with full World Cup context and conversation history',      tag:'9 Languages',        c:'#EC4899'},
               {name:'EmotiPulse',     desc:'Per-minute atmosphere scoring via event formula with pulse SVG + broadcast AI report',         tag:'Minute-by-Minute',   c:'#EF4444'},
-              {name:'Pitch Agent',    desc:'IBM Granite agent that calls 6 real StatsBomb tools — shows full reasoning chain live',       tag:'Tool Use · Agentic', c:'#00D46A'},
-              {name:'Referee Lens',   desc:'Card and foul consistency across all 128 matches — AI disciplinary verdict per referee',      tag:'128 Match Analysis', c:'#F59E0B'},
+              {name:'Fan Decoder',    desc:'Football AI chatbot in 9 languages with full World Cup context and conversation history',      tag:'9 Languages',        c:'#EC4899'},
             ] as {name:string;desc:string;tag:string;c:string}[]).map((m,i)=>(
               <div key={m.name} className="lp-card" style={{borderLeftColor:m.c}}>
                 <div className="lp-card-top">
@@ -623,18 +625,17 @@ export default function Home() {
         <div className="enter-anim">
           <svg className="enter-anim-svg" viewBox="0 0 1000 680" preserveAspectRatio="xMidYMid slice">
             <rect width="1000" height="680" fill="#04070A"/>
-            <ellipse cx="500" cy="340" rx="480" ry="310" fill="#0A0A20"/>
             {Array.from({length:13},(_,i)=>(
-              <rect key={i} x="115" y={90+i*40} width="770" height="40" fill={i%2===0?'#0C200C':'#091809'}/>
+              <rect key={i} x="115" y={90+i*40} width="770" height="40" fill={i%2===0?'#0D2810':'#0A1C0D'}/>
             ))}
-            <rect x="115" y="90" width="770" height="510" fill="none" stroke="#1A4A1A" strokeWidth="2"/>
-            <line x1="500" y1="92" x2="500" y2="598" stroke="#1A4A1A" strokeWidth="2"/>
-            <circle cx="500" cy="345" r="85" fill="none" stroke="#1A4A1A" strokeWidth="2"/>
-            <circle cx="500" cy="345" r="4" fill="#1A4A1A"/>
-            <rect x="115" y="205" width="145" height="280" fill="none" stroke="#1A4A1A" strokeWidth="2"/>
-            <rect x="740" y="205" width="145" height="280" fill="none" stroke="#1A4A1A" strokeWidth="2"/>
-            <rect x="115" y="275" width="52" height="140" fill="none" stroke="#1A4A1A" strokeWidth="1.5"/>
-            <rect x="833" y="275" width="52" height="140" fill="none" stroke="#1A4A1A" strokeWidth="1.5"/>
+            <rect x="115" y="90" width="770" height="510" fill="none" stroke="#1E6830" strokeWidth="2"/>
+            <line x1="500" y1="92" x2="500" y2="598" stroke="#1E6830" strokeWidth="2"/>
+            <circle cx="500" cy="345" r="85" fill="none" stroke="#1E6830" strokeWidth="2"/>
+            <circle cx="500" cy="345" r="5" fill="#1E6830"/>
+            <rect x="115" y="205" width="145" height="280" fill="none" stroke="#1E6830" strokeWidth="2"/>
+            <rect x="740" y="205" width="145" height="280" fill="none" stroke="#1E6830" strokeWidth="2"/>
+            <rect x="115" y="275" width="52" height="140" fill="none" stroke="#1E6830" strokeWidth="1.5"/>
+            <rect x="833" y="275" width="52" height="140" fill="none" stroke="#1E6830" strokeWidth="1.5"/>
             {([[150,100],[850,100],[150,590],[850,590]] as [number,number][]).map(([x,y],i)=>(
               <g key={i}>
                 <rect x={x-3} y={y-20} width="6" height="20" fill="#666"/>
@@ -813,7 +814,7 @@ export default function Home() {
                         </div>
                       </div>
                       <div className="tvnav">
-                        {([['overview','Overview'],['xg','xG Flow'],['shots','Shot Map'],['passes','Pass Network']] as const).map(([v,lbl])=>(
+                        {([['overview','Overview'],['xg','xG Flow'],['shots','Shot Map'],['passes','Pass Network'],['penalties','Penalties']] as const).map(([v,lbl])=>(
                           <button key={v} className={`tvbtn${tacticsView===v?' on':''}`} onClick={()=>setTacticsView(v)}>{lbl}</button>
                         ))}
                       </div>
@@ -1166,6 +1167,80 @@ export default function Home() {
                               {pnt.map((t,ti)=>(<div key={t} className="viz-li"><div className="viz-dot" style={{background:getColor(t,ti)}}/>{t}</div>))}
                             </div>
                             <div className="viz-note">Node size = passing involvement · Line thickness = pass frequency</div>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {tacticsView==='penalties' && (() => {
+                      const pens=shotMap.filter(s=>s.shot_type==='Penalty')
+                      if (!pens.length) return (
+                        <div style={{padding:'40px',textAlign:'center',color:'var(--t3)',fontSize:12}}>
+                          {shotMap.length > 0 ? 'No penalty kicks in this match.' : 'Select a fixture to load penalty data.'}
+                        </div>
+                      )
+                      const oc=(o:string)=>o==='Goal'?'#10B981':o==='Saved'?'#F59E0B':'#EF4444'
+                      const penTeams=[...new Set(pens.map(p=>p.team))]
+                      const saved=pens.filter(p=>p.outcome==='Saved').length
+                      const goals=pens.filter(p=>p.outcome==='Goal').length
+                      const convPct=pens.length>0?Math.round(goals/pens.length*100):0
+                      return (
+                        <div className="viz-card">
+                          <div className="viz-hd">
+                            <span className="viz-ttl">Penalty Analysis</span>
+                            <span className="viz-sub">{pens.length} penalty kick{pens.length!==1?'s':''} · {goals} scored · {saved} saved</span>
+                          </div>
+                          <div className="viz-body" style={{padding:'10px 14px'}}>
+                            {/* Penalty stats row */}
+                            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:14}}>
+                              {([['Penalties',pens.length,'#3B82F6'],['Goals Scored',goals,'#10B981'],['Conversion',`${convPct}%`,'#F59E0B']] as [string,number|string,string][]).map(([lbl,val,c])=>(
+                                <div key={lbl} style={{background:'var(--bg)',border:'1px solid var(--bd)',borderRadius:6,padding:'10px 12px',textAlign:'center'}}>
+                                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:c,lineHeight:1}}>{val}</div>
+                                  <div style={{fontSize:9,fontWeight:700,color:'var(--t3)',marginTop:3,letterSpacing:'0.1em',textTransform:'uppercase'}}>{lbl}</div>
+                                </div>
+                              ))}
+                            </div>
+                            {/* Penalty shot locations — zoomed penalty area */}
+                            <svg viewBox="94 28 26 24" style={{width:'100%',maxHeight:260,display:'block',background:'#05100A',borderRadius:4}}>
+                              <rect x="94" y="28" width="26" height="24" fill="none" stroke="#1D5A1D" strokeWidth="0.4"/>
+                              <rect x="112" y="30.5" width="8" height="19" fill="none" stroke="#1D5A1D" strokeWidth="0.4"/>
+                              <rect x="116" y="36" width="4" height="8" fill="none" stroke="#1D5A1D" strokeWidth="0.4"/>
+                              <circle cx="108" cy="40" r="0.5" fill="#1D5A1D"/>
+                              {pens.map((s,si)=>{
+                                const r=1.8
+                                const isGoal=s.outcome==='Goal'
+                                return (<g key={si}>
+                                  {isGoal&&<circle cx={s.x} cy={s.y} r={r+1.5} fill={oc(s.outcome)} opacity="0.18"/>}
+                                  <circle cx={s.x} cy={s.y} r={r} fill={oc(s.outcome)} opacity={isGoal?1:0.75} stroke={isGoal?'rgba(255,255,255,0.5)':'none'} strokeWidth="0.3"/>
+                                </g>)
+                              })}
+                            </svg>
+                            <div className="viz-leg" style={{marginTop:10}}>
+                              {([['Goal','#10B981'],['Saved','#F59E0B'],['Missed/Other','#EF4444']] as [string,string][]).map(([l,c])=>(<div key={l} className="viz-li"><div className="viz-dot" style={{background:c}}/>{l}</div>))}
+                            </div>
+                            {/* Per-penalty list */}
+                            <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:6}}>
+                              {pens.map((p,i)=>(
+                                <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 10px',background:'var(--bg)',border:'1px solid var(--bd)',borderLeft:`3px solid ${oc(p.outcome)}`,borderRadius:'0 4px 4px 0'}}>
+                                  <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--t3)',minWidth:28}}>{p.minute}&apos;</span>
+                                  <div style={{flex:1}}>
+                                    <div style={{fontSize:12,fontWeight:700,color:'var(--t1)'}}>{p.player}</div>
+                                    <div style={{fontSize:10,color:'var(--t3)'}}>{p.team}</div>
+                                  </div>
+                                  <span style={{fontSize:11,fontWeight:800,color:oc(p.outcome),textTransform:'uppercase',letterSpacing:'0.06em'}}>{p.outcome}</span>
+                                  <span style={{fontSize:10,color:'var(--t3)'}}>xG {p.xg.toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                            {penTeams.length > 0 && (
+                              <div className="viz-note">
+                                {penTeams.map(t=>{
+                                  const tPens=pens.filter(p=>p.team===t)
+                                  const tGoals=tPens.filter(p=>p.outcome==='Goal').length
+                                  return `${t}: ${tPens.length} pen${tPens.length!==1?'s':''}, ${tGoals} scored`
+                                }).join(' · ')}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )

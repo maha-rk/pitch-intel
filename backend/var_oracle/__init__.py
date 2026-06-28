@@ -494,12 +494,38 @@ Respond with ONLY valid JSON — no prose before or after:
             'confidence': 0.50,
         }
 
+    # Surface the actual FIFA law text that grounded this verdict
+    incident_key = verdict.get('incident_type', 'foul')
+    if incident_key not in FIFA_LAWS:
+        incident_key = 'foul'
+    law_name, law_text = get_relevant_law(incident_key)
+
+    # Pick the most visually interesting frame for the detection preview.
+    # Prefer frames where the ball is visible (+8 bonus) so the preview is informative even on no-contact clips.
+    best_frame = max(frames, key=lambda f: f['max_player_overlap'] * 10 + f['person_count'] + (8 if f['ball_found'] else 0), default=None)
+    detection_preview = None
+    if best_frame:
+        t_sec = round(best_frame['frame'] / max(fps, 1), 2)
+        detection_preview = {
+            'timestamp': t_sec,
+            'persons': best_frame.get('persons', [])[:8],
+            'ball': best_frame.get('ball'),
+            'max_overlap': round(best_frame['max_player_overlap'], 5),
+            'contact': best_frame['max_player_overlap'] > 0.015,
+        }
+
     return {
         **verdict,
+        'detection_preview': detection_preview,
+        'law_chunk': {
+            'name': law_name,
+            'text': law_text,
+            'source': 'Docling PDF parse' if (os.path.exists(os.path.join(os.path.dirname(__file__), 'fifa_laws.pdf')) and DOCLING_AVAILABLE) else 'FIFA Laws of the Game (hardcoded excerpt)',
+        },
         'cv_findings': {
             'duration_seconds': cv_data['duration_seconds'],
             'frames_analysed': cv_data['sampled_frames'],
-            'ball_detected': ball_frames > 0,
+            'ball_frame_count': ball_frames,
             'players_detected': round(avg_persons),
             'contact_detected': max_overlap > 0.015,
             'ball_height': 'arm/chest' if avg_ball_h < 0.40 else 'upper body' if avg_ball_h < 0.52 else 'lower body',

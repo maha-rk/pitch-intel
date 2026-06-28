@@ -1,8 +1,24 @@
-# Pitch Intel — World Cup AI Command Center
+# Pitch Intel
 
-> A real-time AI football intelligence system that explains not just what happened, but why it happened.
+> Upload a football match clip. **YOLOv8** reads it frame-by-frame. **IBM Docling** extracts the exact FIFA law that applies. **IBM Granite** delivers a structured referee verdict — grounded in the actual rulebook text, not in training approximations. The evidence is shown: the law chunk, the CV readings, the confidence score.
+>
+> That is one of eight modules.
 
-**Solo submission · IBM Granite + IBM Docling · June Innovation Challenge 2026**
+**IBM SkillsBuild June Innovation Challenge 2026 · Solo submission**
+**IBM Granite · IBM Docling · YOLOv8 · StatsBomb open data · FAISS · Next.js 14**
+
+---
+
+## What makes this different
+
+Every other football AI system does one of three things:
+- **LLM wrapper over stats** — feed numbers in, get narrative out
+- **ML prediction model** — train on historical data, predict one outcome
+- **RAG over rules** — embed a rulebook, answer questions about it
+
+Pitch Intel does all three simultaneously, chained together. The VAR Oracle is the clearest example: computer vision reads the footage → Docling parses the FIFA PDF → Granite cross-references both and issues a verdict with the exact law clause visible. That is not a chatbot answering questions about football. It is a grounded inference pipeline where every layer can be inspected.
+
+The same principle runs through all 8 modules: **no Granite call runs without real StatsBomb event data in the context.** If the data pipeline fails, the AI output fails. There is no fallback to fabricated plausibility.
 
 ---
 
@@ -20,32 +36,18 @@ Football data analysis is locked behind professional platforms — Wyscout, Opta
 
 ---
 
-## Why Current Tools Fail
-
-- They show stats without explanation — a journalist gets a number, not an insight
-- They are locked behind paywalls that price out independent analysts, students, and fans in emerging markets
-- They have no AI reasoning layer — no tool currently grounds a natural-language tactical explanation in live event data pulled in real time
-
----
-
-## The Solution
-
-Pitch Intel connects real StatsBomb event data (128 World Cup matches, ~3.5M events) directly to IBM Granite. Every output is grounded in real numbers — no hallucination, no fabrication. Granite does not generate analysis from its training knowledge; it receives actual match statistics as context and reasons from them. The system is designed so that if the data pipeline fails, the AI output fails too — there is no fallback to fabricated plausibility.
-
----
-
 ## The 8 Modules
 
 | # | Module | What it does | Key tech |
 |---|--------|-------------|----------|
-| 01 | **TacticalLens** | xG flow chart, shot map (SVG pitch), pass network graph, player position heatmap, auto-detected formation (e.g. 4-3-3) from average position clustering. Three explanation modes: Beginner, Fan, Coach. | IBM Granite · StatsBomb events |
-| 02 | **Scout Eye** | Natural-language player search ("clinical striker high conversion rate") across 6,000+ World Cup players. Returns top 5 with radar charts and IBM Granite scouting reports. Side-by-side head-to-head comparison when 2 results are selected. | FAISS · sentence-transformers · IBM Granite |
-| 03 | **VAR Oracle** | Upload a match clip. YOLOv8 detects players and ball frame-by-frame. Overlap scoring determines foul / handball / offside. Verdict cross-referenced with FIFA Laws of the Game, parsed by IBM Docling from the official PDF. | YOLOv8 · IBM Docling · IBM Granite |
-| 04 | **Match Explainer** | Pre- and post-match briefings grounded in real StatsBomb stats: shots, xG, possession, key moments. IBM Granite writes the narrative from actual numbers, not from training approximations. | IBM Granite · StatsBomb |
-| 05 | **Fan Decoder** | Football AI chatbot in 9 languages (English, Spanish, French, Portuguese, Arabic, Japanese, German, Italian, Dutch). Full World Cup context in system prompt. Maintains conversation history within the session. | IBM Granite |
-| 06 | **EmotiPulse** | Scores match atmosphere minute-by-minute using a weighted event formula (goals ×10, shots ×2, pressures, fouls, cards). Renders a pulse SVG chart. IBM Granite writes a broadcast-style atmosphere report from the scored data. | IBM Granite · StatsBomb events |
-| 07 | **Pitch Agent** | IBM Granite agent with structured tool use. Calls `get_momentum`, `get_xg_flow`, `get_key_moments`, `get_pass_network`, `get_emotion_arc`, `search_players` dynamically. Shows the full reasoning chain. Up to 5 tool-call iterations per query. | IBM Granite · Tool Use · StatsBomb |
-| 08 | **Referee Lens** | Aggregates all 128 World Cup matches by referee. Per referee: yellow/red card averages, foul rate, match-by-match log. IBM Granite writes a 3-paragraph consistency report citing real numbers. | IBM Granite · StatsBomb |
+| 01 | **VAR Oracle** | Upload a match clip. YOLOv8 detects players and ball frame-by-frame. Overlap scoring classifies the incident (foul / handball / offside / tackle). Verdict cross-referenced with the exact FIFA law clause — parsed by IBM Docling from the official PDF. The law text is shown in the UI alongside the CV evidence. | YOLOv8 · IBM Docling · IBM Granite |
+| 02 | **TacticalLens** | xG flow chart, shot map (SVG pitch), pass network graph, player position heatmap, auto-detected formation (e.g. 4-3-3) from average position clustering. Three explanation modes: Beginner, Fan, Coach. Penalty analysis tab. "Why did this match end this way?" verdict from Granite. | IBM Granite · StatsBomb events |
+| 03 | **Pitch Agent** | IBM Granite agent with structured tool use. Calls `get_momentum`, `get_xg_flow`, `get_key_moments`, `get_pass_network`, `get_emotion_arc`, `search_players` dynamically. Shows the full reasoning chain — judges can see every tool call and what data it returned. Supports What-If counterfactual questions grounded in real data. | IBM Granite · Tool Use · StatsBomb |
+| 04 | **Scout Eye** | Natural-language player search ("clinical striker high conversion rate") across 6,000+ World Cup players. Returns top 5 with radar charts and IBM Granite scouting reports. Side-by-side head-to-head comparison when 2 results are selected. | FAISS · sentence-transformers · IBM Granite |
+| 05 | **Referee Lens** | Aggregates all 128 World Cup matches by referee. Per referee: foul symmetry index (how evenly fouls were called between both teams), home bias index, card and foul averages, match-by-match log. IBM Granite writes a 3-paragraph consistency report citing real numbers. | IBM Granite · StatsBomb |
+| 06 | **Match Explainer** | Pre- and post-match briefings grounded in real StatsBomb stats: shots, xG, possession, key moments. IBM Granite writes the narrative from actual numbers, not from training approximations. | IBM Granite · StatsBomb |
+| 07 | **EmotiPulse** | Scores match atmosphere minute-by-minute using a weighted event formula (goals ×10, shots ×2, pressures, fouls, cards). Renders a pulse SVG chart. IBM Granite writes a broadcast-style atmosphere report from the scored data. | IBM Granite · StatsBomb events |
+| 08 | **Fan Decoder** | Football AI chatbot in 16 languages (English, Spanish, French, Portuguese, Arabic, Japanese, German, Italian, Dutch, Russian, Korean, Chinese, Turkish, Polish, Swedish, Hindi). Full World Cup context in system prompt. Maintains conversation history within the session. | IBM Granite |
 
 ---
 
@@ -59,11 +61,11 @@ The three-mode system in TacticalLens (Beginner / Fan / Coach) demonstrates this
 
 ### IBM Docling
 
-Used exclusively in VAR Oracle. When `backend/var_oracle/fifa_laws.pdf` is present, Docling parses the PDF and the relevant rule sections are injected into the Granite prompt alongside YOLOv8 detection output. Verdicts are grounded in actual FIFA regulations — not in Granite's approximate training knowledge of the rules. Every verdict cites the specific FIFA Law that applies, making the reasoning auditable rather than opaque.
+Used in VAR Oracle. When `backend/var_oracle/fifa_laws.pdf` is present, Docling parses the PDF and the relevant rule sections are injected into the Granite prompt alongside YOLOv8 detection output. Verdicts are grounded in actual FIFA regulations — not in Granite's approximate training knowledge of the rules. Every verdict cites the specific FIFA Law that applies, and **the exact parsed law text is shown in the UI** — making the reasoning auditable, not opaque.
 
 To activate: drop `fifa_laws.pdf` (freely available from FIFA) into `backend/var_oracle/`. The code detects it automatically on the next request.
 
-### Agentic Loop (Pitch Agent, Module 07)
+### Agentic Loop (Pitch Agent, Module 03)
 
 ```
 User question
@@ -89,15 +91,11 @@ The frontend renders each tool call as an expandable badge — judges can verify
 
 ## UX Design Decisions
 
-These decisions are deliberate, not aesthetic. The interface is designed to serve data clarity over visual impressiveness.
-
 **Solid colors over gradients.** Gradients draw the eye to the UI itself. In an analytics tool, the data must be the focal point. Every color in the palette is chosen for contrast against the dark background, not for decorative effect.
 
-**Reduced visual noise improves clarity.** Each panel uses at most one or two high-contrast elements — a chart, a score, a key metric. The rest is structured whitespace. A panel that competes with itself loses the user before they read the data.
+**Visual hierarchy matches decision order.** Score and teams appear first. xG insight appears second — it is the single most predictive metric and the most common question from a fan ("did the score reflect the play?"). Supporting data comes last.
 
-**Visual hierarchy matches decision order.** Score and teams appear first. xG insight appears second — it is the single most predictive metric and the most common question from a fan ("did the score reflect the play?"). Supporting data comes last. This matches how a user actually processes a match result, not how a database would sort its columns.
-
-**The "Why did this match end this way?" panel is the differentiator.** Most dashboards answer "what happened." Pitch Intel's Match Explainer panel answers "why it happened" — using the actual xG, shot counts, possession sequences, and key moment timeline as input to Granite's reasoning. This is what transforms a dashboard into a decision-explainer. A journalist can copy the output directly. An analyst can interrogate the inputs. A fan can finally understand what they watched.
+**The evidence is always visible.** In VAR Oracle, the law chunk Docling parsed is shown. In Pitch Agent, every tool call and its raw output is expandable. In TacticalLens, the xG and momentum numbers that fed the Granite verdict are right above the verdict. A judge should never have to take the AI output on faith — they can inspect what went in.
 
 ---
 
@@ -152,16 +150,16 @@ On first run, Scout Eye pre-warms the FAISS index (~200ms). All other modules lo
 StatsBomb uses a 120×80 pitch coordinate system. Drawing directly to SVG gives exact control over shot positions, passing lines, and player nodes without a coordinate transform layer. Libraries like Recharts or D3 would add complexity without benefit.
 
 **FAISS instead of a vector database.**
-Scout Eye needs to run offline, cold-start fast, without a separate database process. FAISS indexes 6,000+ player embeddings in ~200ms and queries in under 5ms. Warmed at startup via a background thread. Simple and correct for the scale.
+Scout Eye needs to run offline, cold-start fast, without a separate database process. FAISS indexes 6,000+ player embeddings in ~200ms and queries in under 5ms. Warmed at startup via a background thread.
 
 **Groq for IBM Granite inference.**
-Sub-second latency lets the agentic tool-use loop complete 3–4 tool calls and return a synthesised answer in under 10 seconds — fast enough to feel interactive. Essential for the Pitch Agent module.
+Sub-second latency lets the agentic tool-use loop complete 3–4 tool calls and return a synthesised answer in under 10 seconds — fast enough to feel interactive. Essential for Pitch Agent.
 
 **Formation detection from average positions.**
-StatsBomb open data does not expose lineup formations directly. Sorting players by average x-coordinate, dropping the deepest (goalkeeper proxy), and finding the two largest positional gaps gives a reliable heuristic for structured teams. The code returns `'?'` when data is insufficient — this is explicitly acknowledged as a heuristic, not presented as ground truth.
+StatsBomb open data does not expose lineup formations directly. Sorting players by average x-coordinate, dropping the deepest (goalkeeper proxy), and finding the two largest positional gaps gives a reliable heuristic. The code returns `'?'` when data is insufficient — explicitly acknowledged as a heuristic, not presented as ground truth.
 
 **No mocked AI outputs — every Granite response is generated live from real StatsBomb data.**
-No hardcoded responses, no pre-generated reports, no canned examples. Every Granite call receives actual match statistics as context, not approximate stand-ins from training memory. If the data pipeline fails, the AI output fails — there is no fallback to fabricated plausibility. Judges can verify this: the Pitch Agent module exposes every tool call and the raw data it returned before Granite formed its answer.
+No hardcoded responses, no pre-generated reports, no canned examples. If the data pipeline fails, the AI output fails — there is no fallback to fabricated plausibility. Judges can verify this: the Pitch Agent module exposes every tool call and the raw data it returned before Granite formed its answer.
 
 ---
 

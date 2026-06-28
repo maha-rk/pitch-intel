@@ -55,6 +55,7 @@ def get_referee_stats(referee_name: str) -> dict:
 
     match_records = []
     total_yellows = total_reds = total_fouls = total_shots = 0
+    symmetry_scores: list[float] = []
 
     for _, row in ref_matches.iterrows():
         match_id = int(row['match_id'])
@@ -77,15 +78,26 @@ def get_referee_stats(referee_name: str) -> dict:
                 events.apply(lambda e: 'Red' in str(e.get('foul_committed_card', '') or '') or
                              'Red' in str(e.get('bad_behaviour_card', '') or ''), axis=1)
             ]))
-            fouls = int(len(events[events['type'] == 'Foul Committed']))
+            foul_events = events[events['type'] == 'Foul Committed']
+            fouls = int(len(foul_events))
             shots = int(len(events[events['type'] == 'Shot']))
+
+            # Per-team foul breakdown for symmetry
+            home_fouls = int(len(foul_events[foul_events['team'].apply(lambda t: str(t).strip()) == home.strip()]))
+            away_fouls = int(len(foul_events[foul_events['team'].apply(lambda t: str(t).strip()) == away.strip()]))
+            hi = max(home_fouls, away_fouls)
+            lo = min(home_fouls, away_fouls)
+            symmetry = round(lo / hi, 2) if hi > 0 else 1.0
         except Exception:
             yellows = reds = fouls = shots = 0
+            home_fouls = away_fouls = 0
+            symmetry = 1.0
 
         total_yellows += yellows
         total_reds += reds
         total_fouls += fouls
         total_shots += shots
+        symmetry_scores.append(symmetry)
 
         match_records.append({
             'match_id': match_id,
@@ -98,9 +110,17 @@ def get_referee_stats(referee_name: str) -> dict:
             'reds': reds,
             'fouls': fouls,
             'shots': shots,
+            'home_fouls': home_fouls,
+            'away_fouls': away_fouls,
+            'foul_symmetry': symmetry,
         })
 
     n = len(match_records)
+    avg_symmetry = round(sum(symmetry_scores) / max(len(symmetry_scores), 1), 2)
+    # Bias index: how often home team got more fouls called on them (0=never, 1=always)
+    home_disadvantaged = sum(1 for m in match_records if m['home_fouls'] > m['away_fouls'])
+    home_bias_index = round(home_disadvantaged / max(n, 1), 2)
+
     summary = {
         'referee': referee_name,
         'matches_officiated': n,
@@ -111,6 +131,8 @@ def get_referee_stats(referee_name: str) -> dict:
         'avg_reds_per_match': round(total_reds / max(n, 1), 2),
         'avg_fouls_per_match': round(total_fouls / max(n, 1), 1),
         'avg_shots_per_match': round(total_shots / max(n, 1), 1),
+        'avg_foul_symmetry': avg_symmetry,
+        'home_bias_index': home_bias_index,
         'matches': match_records,
     }
 
@@ -135,16 +157,18 @@ MATCHES OFFICIATED: {stats['matches_officiated']}
 AVERAGE YELLOWS / MATCH: {stats['avg_yellows_per_match']}
 AVERAGE REDS / MATCH: {stats['avg_reds_per_match']}
 AVERAGE FOULS CALLED / MATCH: {stats['avg_fouls_per_match']}
+FOUL SYMMETRY INDEX: {stats['avg_foul_symmetry']} (1.0 = perfectly equal fouls both sides; 0 = all fouls on one team)
+HOME BIAS INDEX: {stats['home_bias_index']} (fraction of matches where home team had more fouls called on them)
 
 MATCH-BY-MATCH RECORD:
 {match_lines}
 
 Write a 3-paragraph referee consistency report:
 PARAGRAPH 1 — Disciplinary profile: characterise this referee's style (lenient / strict / inconsistent) based on the card and foul averages.
-PARAGRAPH 2 — Notable matches: reference 1-2 specific matches where card counts were notably high or low and what that suggests.
-PARAGRAPH 3 — Consistency verdict: overall assessment of how consistent this referee was across their matches. One punchy closing sentence.
+PARAGRAPH 2 — Fairness: comment on the foul symmetry index and home bias — whether this referee called fouls equally between both sides.
+PARAGRAPH 3 — Consistency verdict: overall assessment. One punchy closing sentence.
 
-Be specific, cite real numbers from the data, under 150 words total."""
+Be specific, cite real numbers from the data, under 160 words total."""
 
     report = client.chat.completions.create(
         model=MODEL,
