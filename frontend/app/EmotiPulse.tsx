@@ -13,6 +13,7 @@ interface Match {
 
 interface ArcPoint {
   minute: number
+  display_minute?: number
   score: number
   labels: string[]
 }
@@ -309,7 +310,7 @@ export default function EmotiPulse({ matches }: { matches: Match[] }) {
                       <div style={{
                         fontFamily: "'Bebas Neue', sans-serif", fontSize: 17, color: cfg.color,
                         lineHeight: 1.1, minWidth: 30, textAlign: 'right', flexShrink: 0, paddingTop: 1,
-                      }}>{p.minute}&apos;</div>
+                      }}>{p.display_minute ?? p.minute}&apos;</div>
                       <div style={{ flex: 1 }}>
                         {p.labels.map((l, j) => (
                           <div key={j} style={{
@@ -333,14 +334,12 @@ export default function EmotiPulse({ matches }: { matches: Match[] }) {
               <div>
                 {paragraphs.map((p, i) => (
                   <div key={i} style={{
-                    display: 'flex', gap: 16, alignItems: 'flex-start',
-                    padding: '14px 18px',
+                    padding: '13px 18px',
                     borderBottom: i < paragraphs.length - 1 ? '1px solid var(--bd)' : 'none',
                   }}>
                     <div style={{
-                      fontSize: 10, fontWeight: 900, letterSpacing: '0.12em',
-                      color: cfg.color, flexShrink: 0, minWidth: 20, paddingTop: 3,
-                      fontFamily: 'Inter, sans-serif',
+                      fontSize: 9, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase',
+                      color: cfg.color, marginBottom: 5, fontFamily: 'Inter, sans-serif',
                     }}>0{i + 1}</div>
                     <div
                       style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.8 }}

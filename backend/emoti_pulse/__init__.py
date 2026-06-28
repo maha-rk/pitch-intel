@@ -31,10 +31,13 @@ def _process_events(events: pd.DataFrame, home_team: str, away_team: str) -> tup
     def add_window(minute, pts, label=None):
         w = (int(minute) // 5) * 5
         if w not in windows:
-            windows[w] = {'score': 0, 'labels': []}
+            windows[w] = {'score': 0, 'labels': [], 'first_minute': int(minute)}
         windows[w]['score'] += pts
         if label and len(windows[w]['labels']) < 3:
             windows[w]['labels'].append(label)
+            # Track the actual minute of the first labelled event
+            if len(windows[w]['labels']) == 1:
+                windows[w]['first_minute'] = int(minute)
 
     sorted_events = events.sort_values('minute')
 
@@ -123,9 +126,12 @@ def get_emotion_arc(match_id: int, home_team: str = '', away_team: str = '') -> 
     max_minute = max(windows.keys(), default=90) + 5
     arc = []
     for minute in range(0, max_minute + 5, 5):
-        s = min(windows.get(minute, {}).get('score', 0), 150)
-        labels = windows.get(minute, {}).get('labels', [])
-        arc.append({'minute': minute, 'score': s, 'labels': labels})
+        w = windows.get(minute, {})
+        s = min(w.get('score', 0), 150)
+        labels = w.get('labels', [])
+        # Use actual event minute for display; fall back to window start
+        display_minute = w.get('first_minute', minute)
+        arc.append({'minute': minute, 'display_minute': display_minute, 'score': s, 'labels': labels})
 
     max_score = max((a['score'] for a in arc), default=0)
     avg_score = sum(a['score'] for a in arc) / max(len(arc), 1)

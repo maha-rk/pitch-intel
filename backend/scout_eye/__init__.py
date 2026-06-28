@@ -4,6 +4,7 @@ import numpy as np
 from groq import Groq
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
+from concurrent.futures import ThreadPoolExecutor
 import faiss
 
 load_dotenv('backend/.env')
@@ -62,37 +63,45 @@ def get_index():
         _cache = build_player_index()
     return _cache
 
+def _generate_report(p, desc):
+    report = client.chat.completions.create(
+        model=MODEL,
+        messages=[{
+            "role": "user",
+            "content": f"Generate a concise 3-sentence scouting report for this footballer based on their shooting data. Focus on finishing ability, shot quality, and style:\n\n{desc}"
+        }],
+        max_tokens=150
+    )
+    shots = int(p['total_shots'])
+    return {
+        'name': p['player'],
+        'team': p['team'],
+        'competition': p['competition'],
+        'top_actions': [
+            ['Total Shots', shots],
+            ['Goals', int(p['goals'])],
+            ['Conversion %', float(p['conversion_rate'])],
+            ['Avg xG', round(float(p['avg_xg']), 3)],
+        ],
+        'scouting_report': report.choices[0].message.content,
+        'radar': {
+            'shots': min(shots, 150),
+            'goals': min(int(p['goals']), 30),
+            'conversion': float(p['conversion_rate']),
+            'xg_quality': round(float(p['avg_xg']) * 100, 1),
+            'headers': round(int(p['headers']) / max(shots, 1) * 100, 1),
+            'pressure': round(int(p['under_pressure_shots']) / max(shots, 1) * 100, 1),
+        },
+    }
+
 def search_players(query: str, top_k: int = 3):
     index, player_list, descriptions = get_index()
 
     query_embedding = encoder.encode([query]).astype(np.float32)
     distances, indices = index.search(query_embedding, top_k)
 
-    results = []
-    for idx in indices[0]:
-        p = player_list[idx]
-        desc = descriptions[idx]
-
-        report = client.chat.completions.create(
-            model=MODEL,
-            messages=[{
-                "role": "user",
-                "content": f"Generate a concise 3-sentence scouting report for this footballer based on their shooting data. Focus on finishing ability, shot quality, and style:\n\n{desc}"
-            }],
-            max_tokens=150
-        )
-
-        results.append({
-            'name': p['player'],
-            'team': p['team'],
-            'competition': p['competition'],
-            'top_actions': [
-                ['Total Shots', int(p['total_shots'])],
-                ['Goals', int(p['goals'])],
-                ['Conversion %', float(p['conversion_rate'])],
-                ['Avg xG', round(float(p['avg_xg']), 3)],
-            ],
-            'scouting_report': report.choices[0].message.content
-        })
+    matched = [(player_list[idx], descriptions[idx]) for idx in indices[0]]
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        results = list(executor.map(lambda args: _generate_report(*args), matched))
 
     return results
