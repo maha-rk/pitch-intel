@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Limitations from './Limitations'
 
 interface Match {
   match_id: number
@@ -13,6 +14,7 @@ interface Match {
 
 interface BriefingResult {
   briefing: string
+  limitations?: string[]
   stats: Record<string, Record<string, number>>
   match: string
   date: string
@@ -289,6 +291,8 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
                     ))}
                   </div>
                 </div>
+
+                <Limitations items={result.limitations} />
 
               </div>
             )}

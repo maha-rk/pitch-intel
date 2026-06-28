@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Limitations from './Limitations'
 
 interface RefereeStub {
   name: string
@@ -37,6 +38,7 @@ interface RefereeReport {
   home_bias_index: number
   matches: MatchRecord[]
   ai_report: string
+  limitations?: string[]
 }
 
 function StatBar({ value, max, color }: { value: number; max: number; color: string }) {
@@ -232,6 +234,8 @@ export default function RefereeLens() {
                     ))}
                   </div>
                 </div>
+
+                <Limitations items={report.limitations} />
 
                 {/* Match log */}
                 <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden' }}>

@@ -7,6 +7,7 @@ import VAROracle from './VAROracle'
 import EmotiPulse from './EmotiPulse'
 import PitchAgent from './PitchAgent'
 import RefereeLens from './RefereeLens'
+import Limitations from './Limitations'
 
 interface Match {
   match_id: number
@@ -103,6 +104,7 @@ export default function Home() {
   const [shotMap, setShotMap] = useState<ShotPoint[]>([])
   const [passNetwork, setPassNetwork] = useState<PassNetwork|null>(null)
   const [whyVerdict, setWhyVerdict] = useState<string|null>(null)
+  const [whyLimitations, setWhyLimitations] = useState<string[]|undefined>(undefined)
   const [whyLoading, setWhyLoading] = useState(false)
   useEffect(() => {
     const t = setTimeout(() => setIntroPlayed(true), 3200)
@@ -172,6 +174,7 @@ export default function Home() {
       const res = await fetch(`http://localhost:8001/verdict/${selectedMatch.match_id}?home_team=${encodeURIComponent(selectedMatch.home_team)}&away_team=${encodeURIComponent(selectedMatch.away_team)}&home_score=${selectedMatch.home_score ?? 0}&away_score=${selectedMatch.away_score ?? 0}`)
       const data = await res.json()
       setWhyVerdict(data.verdict)
+      setWhyLimitations(data.limitations)
     } catch(e) {}
     setWhyLoading(false)
   }
@@ -796,6 +799,9 @@ export default function Home() {
                             Granite · Match Verdict
                           </div>
                           <div className="why-txt">{whyVerdict}</div>
+                          <div style={{padding:'0 14px 12px'}}>
+                            <Limitations items={whyLimitations} />
+                          </div>
                         </div>
                       )}
                     </div>

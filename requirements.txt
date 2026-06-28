@@ -3,7 +3,8 @@ uvicorn
 statsbombpy
 sentence-transformers
 faiss-cpu
-groq
+openai
+ibm-watsonx-ai
 python-dotenv
 pandas
 numpy

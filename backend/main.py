@@ -9,6 +9,7 @@ from backend.tactical_lens.heatmap import generate_heatmap_data
 from backend.scout_eye import search_players
 from backend.fan_decoder import decode_question
 from backend.match_explainer import generate_match_briefing
+from backend.transparency import LIMITATIONS
 
 app = FastAPI(title="Pitch Intel API")
 
@@ -99,12 +100,7 @@ async def startup_event():
 @app.get("/verdict/{match_id}")
 def match_verdict(match_id: int, home_team: str, away_team: str, home_score: int = 0, away_score: int = 0):
     from backend.tactical_lens import get_key_moments, get_momentum, get_xg_flow
-    import os
-    from groq import Groq
-    from dotenv import load_dotenv
-    load_dotenv('backend/.env')
-    groq = Groq(api_key=os.getenv('GROQ_API_KEY'))
-    model = os.getenv('GRANITE_MODEL', 'llama-3.3-70b-versatile')
+    from backend.granite import client as groq, MODEL as model
     try:
         moments = get_key_moments(match_id)
         xg = get_xg_flow(match_id)
@@ -128,7 +124,7 @@ def match_verdict(match_id: int, home_team: str, away_team: str, home_score: int
             messages=[{"role":"user","content":f"You are a senior football analyst. Based only on the StatsBomb data below, write a single paragraph (3-4 sentences) explaining why this match ended with this result. Be specific — cite xG, momentum, and key moments. Do not speculate beyond the data.\n\n{context}"}],
             max_tokens=250
         )
-        return {"verdict": resp.choices[0].message.content}
+        return {"verdict": resp.choices[0].message.content, "limitations": LIMITATIONS['tactical']}
     except Exception as e:
         return {"verdict": f"Analysis unavailable: {e}"}
 

@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import numpy as np
-from groq import Groq
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 from concurrent.futures import ThreadPoolExecutor
@@ -9,8 +8,7 @@ import faiss
 
 load_dotenv('backend/.env')
 
-client = Groq(api_key=os.getenv('GROQ_API_KEY'))
-MODEL = os.getenv('GRANITE_MODEL', 'llama-3.3-70b-versatile')
+from backend.granite import client, MODEL
 encoder = SentenceTransformer('all-MiniLM-L6-v2')
 
 def build_player_index():

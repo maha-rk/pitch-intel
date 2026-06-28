@@ -55,7 +55,9 @@ Football data analysis is locked behind professional platforms — Wyscout, Opta
 
 ### IBM Granite
 
-Granite is the reasoning engine for all 8 modules. Every AI output is grounded in real StatsBomb event data passed as context — Granite never runs without real numbers in the prompt. This is not a wrapper around a general chatbot; it is a grounded inference system where the quality of the output is directly tied to the quality of the data pipeline feeding it.
+Granite is the reasoning engine for all 8 modules, served through **IBM watsonx.ai** (`ibm/granite-4-h-small`). Every module routes through a **single inference layer** ([`backend/granite.py`](backend/granite.py)) — no module instantiates its own client, so there is exactly one auditable path to the model. The same layer can serve Granite offline via **Ollama** (`granite3.3:8b`) with no code changes, switched by one environment variable.
+
+Every AI output is grounded in real StatsBomb event data passed as context — Granite never runs without real numbers in the prompt. This is not a wrapper around a general chatbot; it is a grounded inference system where the quality of the output is directly tied to the quality of the data pipeline feeding it.
 
 The three-mode system in TacticalLens (Beginner / Fan / Coach) demonstrates this concretely: the same StatsBomb event data is sent to Granite with different instruction contexts, producing explanations calibrated to three distinct audiences from a single data source.
 
@@ -114,18 +116,19 @@ No proprietary data. No scraping. No paid APIs beyond Groq's free tier.
 
 ## Setup
 
-**Requirements:** Python 3.11+, Node.js 18+, Groq API key (free at console.groq.com)
+**Requirements:** Python 3.11+, Node.js 18+, and an IBM Granite backend — either an IBM **watsonx.ai** project (free tier) or **Ollama** running `granite3.3:8b` locally.
 
 ```bash
 # 1. Clone and set up backend
 cd backend
 python -m venv venv && source venv/bin/activate
-pip install fastapi uvicorn statsbombpy groq python-dotenv \
-            sentence-transformers faiss-cpu ultralytics docling
+pip install -r requirements.txt
 
-# Configure environment
-echo "GROQ_API_KEY=your_key_here" > .env
-echo "GRANITE_MODEL=llama-3.3-70b-versatile" >> .env
+# Configure environment — copy the template and fill in your provider
+cp backend/example.env backend/.env
+#   • watsonx (real IBM Granite, recommended): set WATSONX_API_KEY + WATSONX_PROJECT_ID
+#   • offline Granite: install Ollama, run `ollama pull granite3.3:8b`, set LLM_PROVIDER=ollama
+#   LLM_PROVIDER=auto selects watsonx → Ollama → Groq automatically.
 
 # Start API server (port 8001)
 uvicorn backend.main:app --reload --port 8001

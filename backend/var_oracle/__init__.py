@@ -3,13 +3,12 @@ import cv2
 import json
 import tempfile
 import numpy as np
-from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv('backend/.env')
 
-client = Groq(api_key=os.getenv('GROQ_API_KEY'))
-MODEL = os.getenv('GRANITE_MODEL', 'llama-3.3-70b-versatile')
+from backend.granite import client, MODEL
+from backend.transparency import LIMITATIONS
 
 try:
     from ultralytics import YOLO as _YOLO
@@ -516,6 +515,7 @@ Respond with ONLY valid JSON — no prose before or after:
 
     return {
         **verdict,
+        'limitations': LIMITATIONS['var_oracle'],
         'detection_preview': detection_preview,
         'law_chunk': {
             'name': law_name,

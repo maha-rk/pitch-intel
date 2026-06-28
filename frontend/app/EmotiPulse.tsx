@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Limitations from './Limitations'
 
 interface Match {
   match_id: number
@@ -24,6 +25,7 @@ interface EmotiData {
   max_score: number
   intensity: 'THRILLER' | 'HIGH INTENSITY' | 'COMPETITIVE' | 'CONTROLLED'
   atmosphere_report: string
+  limitations?: string[]
   home_team: string
   away_team: string
   result?: string
@@ -349,6 +351,8 @@ export default function EmotiPulse({ matches }: { matches: Match[] }) {
                 ))}
               </div>
             </div>
+
+            <Limitations items={data.limitations} />
           </div>
         </div>
       )}

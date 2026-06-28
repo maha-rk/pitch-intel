@@ -1,12 +1,11 @@
 import os
 import pandas as pd
-from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv('backend/.env')
 
-client = Groq(api_key=os.getenv('GROQ_API_KEY'))
-MODEL = os.getenv('GRANITE_MODEL', 'llama-3.3-70b-versatile')
+from backend.granite import client, MODEL
+from backend.transparency import LIMITATIONS
 
 
 def _safe_name(val) -> str:
@@ -226,6 +225,7 @@ STRICT RULES:
     return {
         **arc_data,
         'atmosphere_report': report,
+        'limitations': LIMITATIONS['emoti_pulse'],
         'home_team': home_team,
         'away_team': away_team,
         'result': final_result,

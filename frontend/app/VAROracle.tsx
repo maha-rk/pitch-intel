@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import Limitations from './Limitations'
 
 interface PersonBox { x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; conf: number }
 interface BallBox   { cx: number; cy: number; x1: number; y1: number; x2: number; y2: number; conf: number }
@@ -41,6 +42,7 @@ interface Verdict {
   var_action: 'OVERTURNED' | 'UPHELD' | 'NO REVIEW NEEDED'
   reasoning: string
   confidence: number
+  limitations?: string[]
   detection_preview?: DetectionPreview
   cv_findings: CVFindings
   law_chunk?: LawChunk
@@ -643,6 +645,8 @@ export default function VAROracle() {
                 <div style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.85 }}>{verdict.reasoning}</div>
               </div>
             </div>
+
+            <Limitations items={verdict.limitations} />
 
           </div>
 

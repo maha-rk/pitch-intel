@@ -1,13 +1,11 @@
 from statsbombpy import sb
 import pandas as pd
 import os
-from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv('backend/.env')
 
-client = Groq(api_key=os.getenv('GROQ_API_KEY'))
-GRANITE_MODEL = os.getenv('GRANITE_MODEL', 'llama-3.3-70b-versatile')
+from backend.granite import client, GRANITE_MODEL
 
 def get_match_events(match_id: int):
     events = sb.events(match_id=match_id)

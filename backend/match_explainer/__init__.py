@@ -1,13 +1,12 @@
 import os
-from groq import Groq
 from dotenv import load_dotenv
 from statsbombpy import sb
 import pandas as pd
 
 load_dotenv('backend/.env')
 
-client = Groq(api_key=os.getenv('GROQ_API_KEY'))
-MODEL = os.getenv('GRANITE_MODEL', 'llama-3.3-70b-versatile')
+from backend.granite import client, MODEL
+from backend.transparency import LIMITATIONS
 
 def get_match_stats(match_id: int):
     events = sb.events(match_id=match_id)
@@ -58,6 +57,7 @@ Be specific about the numbers. Like a Guardian football correspondent."""
     )
     return {
         'briefing': response.choices[0].message.content,
+        'limitations': LIMITATIONS['match_explainer'],
         'stats': stats,
         'match': f"{home_team} vs {away_team}",
         'date': match_date,

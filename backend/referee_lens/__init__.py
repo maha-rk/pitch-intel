@@ -1,12 +1,11 @@
 import os
 import pandas as pd
-from groq import Groq
 from dotenv import load_dotenv
 from statsbombpy import sb
 
 load_dotenv('backend/.env')
-client = Groq(api_key=os.getenv('GROQ_API_KEY'))
-MODEL = os.getenv('GRANITE_MODEL', 'llama-3.3-70b-versatile')
+from backend.granite import client, MODEL
+from backend.transparency import LIMITATIONS
 
 _matches_cache: pd.DataFrame | None = None
 
@@ -176,4 +175,4 @@ Be specific, cite real numbers from the data, under 160 words total."""
         max_tokens=250,
     ).choices[0].message.content.strip()
 
-    return {**stats, 'ai_report': report}
+    return {**stats, 'ai_report': report, 'limitations': LIMITATIONS['referee']}
