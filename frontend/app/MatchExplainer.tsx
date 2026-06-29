@@ -2,6 +2,14 @@
 
 import { useState } from 'react'
 import Limitations from './Limitations'
+import { SpeakButton } from './voice'
+import { exportReport } from './pdf'
+
+const pdfBtnStyle: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', cursor: 'pointer',
+  background: 'var(--bg3)', border: '1px solid var(--bd2)', borderRadius: 5, color: 'var(--t2)',
+  fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif',
+}
 
 interface Match {
   match_id: number
@@ -266,7 +274,19 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
                         AI Analyst · {result.type === 'pre' ? 'Pre-Match' : 'Post-Match'} Briefing
                       </span>
                     </div>
-                    <span style={{ fontSize: 10, color: 'var(--t3)' }}>IBM Granite · StatsBomb Data</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <SpeakButton text={result.briefing} />
+                      <button style={pdfBtnStyle} onClick={() => exportReport({
+                        title: result.match,
+                        subtitle: `${result.type === 'pre' ? 'Pre-Match' : 'Post-Match'} Briefing`,
+                        meta: [result.date, 'FIFA World Cup'],
+                        sections: [
+                          { heading: 'AI Briefing', body: result.briefing },
+                          ...(result.limitations?.length ? [{ heading: "What this can't tell you", body: result.limitations.map(l => `- ${l}`).join('\n') }] : []),
+                        ],
+                      })}>⬇ PDF</button>
+                      <span style={{ fontSize: 10, color: 'var(--t3)' }}>IBM Granite · StatsBomb Data</span>
+                    </div>
                   </div>
                   <div style={{ padding: '0 20px' }}>
                     {paragraphs.map((para, i) => (

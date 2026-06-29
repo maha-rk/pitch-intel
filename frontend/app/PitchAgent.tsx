@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { MicButton } from './voice'
 
 interface Match {
   match_id: number
@@ -363,6 +364,9 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
           onKeyDown={e => e.key === 'Enter' && ask(input)}
           disabled={loading}
         />
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px', background: 'var(--bg2)', borderTop: '1px solid var(--bd2)', borderBottom: '1px solid var(--bd2)' }}>
+          <MicButton onResult={t => setInput(t)} />
+        </div>
         <button
           onClick={() => ask(input)}
           disabled={!input.trim() || loading}

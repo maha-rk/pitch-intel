@@ -128,6 +128,15 @@ def match_verdict(match_id: int, home_team: str, away_team: str, home_score: int
     except Exception as e:
         return {"verdict": f"Analysis unavailable: {e}"}
 
+@app.get("/debate/{match_id}")
+def debate(match_id: int, home_team: str, away_team: str, home_score: int = 0, away_score: int = 0):
+    from backend.debate import run_debate
+    from fastapi.responses import JSONResponse
+    try:
+        return run_debate(match_id, home_team, away_team, home_score, away_score)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={'error': str(e)})
+
 @app.get("/explainer/{match_id}")
 def explainer(match_id: int, home_team: str, away_team: str, match_date: str, briefing_type: str = 'post'):
     from fastapi.responses import JSONResponse

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { MicButton, SpeakButton } from './voice'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -329,7 +330,10 @@ export default function FanDecoder() {
                       background: 'var(--bg)',
                     }}>
                       <span style={{ fontSize: 10, color: 'var(--t3)' }}>Source: StatsBomb Open Data · World Cup 2018/2022</span>
-                      <div style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--t3)' }}>Powered by IBM Granite</div>
+                      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <SpeakButton text={msg.content} lang={lang.code} />
+                        <span style={{ fontSize: 10, color: 'var(--t3)' }}>Powered by IBM Granite</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -395,6 +399,9 @@ export default function FanDecoder() {
               onFocus={e => (e.currentTarget.style.borderColor = 'var(--green)')}
               onBlur={e => (e.currentTarget.style.borderColor = 'var(--bd2)')}
             />
+            <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px', background: 'var(--bg)', borderTop: '1px solid var(--bd2)', borderBottom: '1px solid var(--bd2)' }}>
+              <MicButton lang={lang.code} onResult={t => setQuestion(t)} />
+            </div>
             <button
               onClick={() => ask()}
               disabled={loading || !question.trim()}

@@ -7,7 +7,9 @@ import VAROracle from './VAROracle'
 import EmotiPulse from './EmotiPulse'
 import PitchAgent from './PitchAgent'
 import RefereeLens from './RefereeLens'
+import DebateRoom from './DebateRoom'
 import Limitations from './Limitations'
+import { SpeakButton } from './voice'
 
 interface Match {
   match_id: number
@@ -80,7 +82,7 @@ const TYPE_CONFIG: Record<string, { color: string; bg: string; label: string }> 
   'Shot':         { color: '#7DD3FC', bg: '#0C2A4A', label: 'Shot' },
 }
 
-const modules = ['VAR Oracle', 'TacticalLens', 'Pitch Agent', 'Scout Eye', 'Referee Lens', 'Match Explainer', 'EmotiPulse', 'Fan Decoder']
+const modules = ['VAR Oracle', 'TacticalLens', 'Pitch Agent', 'Scout Eye', 'Referee Lens', 'Match Explainer', 'EmotiPulse', 'Fan Decoder', 'Debate']
 
 export default function Home() {
   const [activeModule, setActiveModule] = useState('VAR Oracle')
@@ -799,6 +801,9 @@ export default function Home() {
                             Granite · Match Verdict
                           </div>
                           <div className="why-txt">{whyVerdict}</div>
+                          <div style={{padding:'8px 14px 0'}}>
+                            <SpeakButton text={whyVerdict} />
+                          </div>
                           <div style={{padding:'0 14px 12px'}}>
                             <Limitations items={whyLimitations} />
                           </div>
@@ -1413,8 +1418,11 @@ export default function Home() {
           {/* REFEREE LENS */}
           {activeModule==='Referee Lens'&&(<RefereeLens />)}
 
+          {/* DEBATE */}
+          {activeModule==='Debate'&&(<DebateRoom matches={matches} />)}
+
           {/* COMING SOON */}
-          {!['TacticalLens','Scout Eye','VAR Oracle','Match Explainer','Fan Decoder','EmotiPulse'].includes(activeModule)&&(
+          {!['TacticalLens','Scout Eye','VAR Oracle','Match Explainer','Fan Decoder','EmotiPulse','Pitch Agent','Referee Lens','Debate'].includes(activeModule)&&(
             <div className="coming">
               <div className="comingh">{activeModule}</div>
               <div className="comings">Module in development</div>

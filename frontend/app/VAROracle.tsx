@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import Limitations from './Limitations'
+import { exportReport } from './pdf'
 
 interface PersonBox { x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; conf: number }
 interface BallBox   { cx: number; cy: number; x1: number; y1: number; x2: number; y2: number; conf: number }
@@ -639,7 +640,24 @@ export default function VAROracle() {
             <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden' }}>
               <div style={{ padding: '9px 14px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)' }}>IBM Granite · Referee Reasoning</span>
-                <span style={{ fontSize: 10, color: 'var(--t3)' }}>Grounded in FIFA {verdict.law_number}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    onClick={() => exportReport({
+                      title: `VAR Oracle Verdict — ${verdict.incident_type}`,
+                      subtitle: `${vc.label} · ${confidencePct}% confidence`,
+                      meta: [`FIFA ${verdict.law_number}`, verdict.law_applied],
+                      sections: [
+                        { heading: 'What Happened', body: verdict.what_happened },
+                        { heading: 'Correct Decision', body: verdict.correct_decision },
+                        { heading: 'Granite Reasoning', body: verdict.reasoning },
+                        ...(verdict.law_chunk ? [{ heading: `FIFA Law — ${verdict.law_chunk.name}`, body: verdict.law_chunk.text }] : []),
+                        ...(verdict.limitations?.length ? [{ heading: "What this can't tell you", body: verdict.limitations.map(l => `- ${l}`).join('\n') }] : []),
+                      ],
+                    })}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', cursor: 'pointer', background: 'var(--bg3)', border: '1px solid var(--bd2)', borderRadius: 5, color: 'var(--t2)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}
+                  >⬇ PDF</button>
+                  <span style={{ fontSize: 10, color: 'var(--t3)' }}>Grounded in FIFA {verdict.law_number}</span>
+                </div>
               </div>
               <div style={{ padding: '16px 18px' }}>
                 <div style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.85 }}>{verdict.reasoning}</div>

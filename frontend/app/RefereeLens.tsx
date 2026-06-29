@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Limitations from './Limitations'
+import { exportReport } from './pdf'
 
 interface RefereeStub {
   name: string
@@ -223,7 +224,22 @@ export default function RefereeLens() {
                 <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden' }}>
                   <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)' }}>IBM Granite · Consistency Analysis</span>
-                    <span style={{ fontSize: 10, color: 'var(--t3)' }}>Grounded in StatsBomb event data</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <button
+                        onClick={() => exportReport({
+                          title: `Referee Analysis — ${report.referee}`,
+                          subtitle: `${report.matches_officiated} matches officiated`,
+                          meta: [`Foul symmetry ${report.avg_foul_symmetry.toFixed(2)}`, `Home bias ${report.home_bias_index.toFixed(2)}`],
+                          sections: [
+                            { heading: 'Summary', body: `Yellow cards/match: ${report.avg_yellows_per_match.toFixed(2)}\nRed cards/match: ${report.avg_reds_per_match.toFixed(2)}\nFouls/match: ${report.avg_fouls_per_match.toFixed(1)}\nFoul symmetry index: ${report.avg_foul_symmetry.toFixed(2)}\nHome bias index: ${report.home_bias_index.toFixed(2)}` },
+                            { heading: 'Granite Consistency Report', body: report.ai_report },
+                            ...(report.limitations?.length ? [{ heading: "What this can't tell you", body: report.limitations.map(l => `- ${l}`).join('\n') }] : []),
+                          ],
+                        })}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', cursor: 'pointer', background: 'var(--bg3)', border: '1px solid var(--bd2)', borderRadius: 5, color: 'var(--t2)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}
+                      >⬇ PDF</button>
+                      <span style={{ fontSize: 10, color: 'var(--t3)' }}>Grounded in StatsBomb event data</span>
+                    </div>
                   </div>
                   <div style={{ padding: '16px 18px' }}>
                     {report.ai_report.split(/\n\n+/).filter(p => p.trim()).map((p, i) => (

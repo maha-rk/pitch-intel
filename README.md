@@ -89,6 +89,21 @@ Response + full tool-call log returned to frontend
 
 The frontend renders each tool call as an expandable badge — judges can verify which StatsBomb data Granite fetched and what it returned before forming its answer. The reasoning chain is not hidden.
 
+### Model Context Protocol (MCP) gateway
+
+The same six StatsBomb tools are also exposed over the open **Model Context Protocol** via [`backend/mcp_server.py`](backend/mcp_server.py). Instead of the tool logic being locked inside one endpoint, it becomes a reusable, governed surface that any MCP client can consume — including an **IBM Context Forge** MCP gateway placed in front of the watsonx Granite agent.
+
+```bash
+python -m backend.mcp_server      # serves get_momentum, get_xg_flow, get_key_moments,
+                                  # get_pass_network, get_emotion_arc, search_players over MCP
+```
+
+This means the agent's capabilities are standards-based and portable: the tools can be registered with a gateway, shared across agents, and governed centrally rather than hard-wired to a single app.
+
+### Multi-Agent Debate (Module 09)
+
+Two IBM Granite personas — **The Advocate** and **The Skeptic** — receive the *same* real StatsBomb data and argue opposing readings of a result ("deserved" vs "flattered the winner"). A neutral third Granite pass weighs both and issues a consensus verdict. Because every agent gets identical data, the disagreement is interpretive, not factual — a clean demonstration of grounded reasoning under different framings.
+
 ---
 
 ## UX Design Decisions
@@ -98,6 +113,10 @@ The frontend renders each tool call as an expandable badge — judges can verify
 **Visual hierarchy matches decision order.** Score and teams appear first. xG insight appears second — it is the single most predictive metric and the most common question from a fan ("did the score reflect the play?"). Supporting data comes last.
 
 **The evidence is always visible.** In VAR Oracle, the law chunk Docling parsed is shown. In Pitch Agent, every tool call and its raw output is expandable. In TacticalLens, the xG and momentum numbers that fed the Granite verdict are right above the verdict. A judge should never have to take the AI output on faith — they can inspect what went in.
+
+**Honest limitations on every verdict.** Each AI output ships with an explicit "What this can't tell you" panel naming the blind spots of the data and method — surfacing uncertainty instead of implying false confidence.
+
+**Accessibility & broadcast feel.** Ask by voice (speech-to-text) and have any Granite answer read aloud (text-to-speech) via the browser-native Web Speech API. Any verdict or briefing exports to a clean branded **PDF report** for sharing.
 
 ---
 

@@ -5,6 +5,7 @@ sentence-transformers
 faiss-cpu
 openai
 ibm-watsonx-ai
+mcp
 python-dotenv
 pandas
 numpy
