@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import Limitations from './Limitations'
 import { exportReport } from './pdf'
+import { getLang } from './lang'
+import { useTypewriter } from './useTypewriter'
 
 interface RefereeStub {
   name: string
@@ -42,6 +44,21 @@ interface RefereeReport {
   limitations?: string[]
 }
 
+function TypedReport({ text }: { text: string }) {
+  const typed = useTypewriter(text)
+  const paragraphs = typed.split(/\n\n+/).filter(p => p.trim())
+  return (
+    <>
+      {paragraphs.map((p, i) => (
+        <div key={i} style={{ marginBottom: i < paragraphs.length - 1 ? 14 : 0 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: 5 }}>0{i + 1}</div>
+          <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.8 }}>{p}</div>
+        </div>
+      ))}
+    </>
+  )
+}
+
 function StatBar({ value, max, color }: { value: number; max: number; color: string }) {
   return (
     <div style={{ height: 4, background: 'var(--bg4)', borderRadius: 2, overflow: 'hidden', marginTop: 4 }}>
@@ -70,7 +87,7 @@ export default function RefereeLens() {
     setReport(null)
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:8001/referee/${encodeURIComponent(ref.name)}`)
+      const res = await fetch(`http://localhost:8001/referee/${encodeURIComponent(ref.name)}?lang=${getLang()}`)
       const data: RefereeReport = await res.json()
       setReport(data)
     } catch { /* silent */ }
@@ -242,12 +259,7 @@ export default function RefereeLens() {
                     </div>
                   </div>
                   <div style={{ padding: '16px 18px' }}>
-                    {report.ai_report.split(/\n\n+/).filter(p => p.trim()).map((p, i) => (
-                      <div key={i} style={{ marginBottom: i < 2 ? 14 : 0 }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: 5 }}>0{i + 1}</div>
-                        <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.8 }}>{p}</div>
-                      </div>
-                    ))}
+                    <TypedReport text={report.ai_report} />
                   </div>
                 </div>
 

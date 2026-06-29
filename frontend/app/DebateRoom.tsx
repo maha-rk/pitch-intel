@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Limitations from './Limitations'
 import { SpeakButton } from './voice'
 import { exportReport } from './pdf'
+import { getLang } from './lang'
+import { useTypewriter } from './useTypewriter'
 
 interface Match {
   match_id: number
@@ -29,6 +31,10 @@ export default function DebateRoom({ matches }: { matches: Match[] }) {
   const [result, setResult] = useState<DebateResult | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const typedArgA = useTypewriter(result?.agent_a.argument)
+  const typedArgB = useTypewriter(result?.agent_b.argument, 6)
+  const typedConsensus = useTypewriter(result?.consensus, 5)
+
   const run = async () => {
     if (!selected) return
     setLoading(true); setResult(null)
@@ -36,6 +42,7 @@ export default function DebateRoom({ matches }: { matches: Match[] }) {
       const p = new URLSearchParams({
         home_team: selected.home_team, away_team: selected.away_team,
         home_score: String(selected.home_score ?? 0), away_score: String(selected.away_score ?? 0),
+        lang: getLang(),
       })
       const res = await fetch(`http://localhost:8001/debate/${selected.match_id}?${p}`)
       setResult(await res.json())
@@ -75,7 +82,8 @@ export default function DebateRoom({ matches }: { matches: Match[] }) {
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--t3)' }}>Two Granite agents, one match, opposing views</div>
           </div>
         ) : (
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 22px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* Header / run */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -111,6 +119,7 @@ export default function DebateRoom({ matches }: { matches: Match[] }) {
                     title: `Debate — ${selected.home_team} vs ${selected.away_team}`,
                     subtitle: result.topic,
                     meta: [selected.match_date],
+                    lang: getLang(),
                     sections: [
                       { heading: `${result.agent_a.name} — ${result.agent_a.stance}`, body: result.agent_a.argument },
                       { heading: `${result.agent_b.name} — ${result.agent_b.stance}`, body: result.agent_b.argument },
@@ -122,14 +131,14 @@ export default function DebateRoom({ matches }: { matches: Match[] }) {
 
                 {/* The two agents */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  {([[result.agent_a, '#4ADE80', 'var(--g-border)'], [result.agent_b, '#F87171', 'var(--r-border)']] as [Agent, string, string][]).map(([ag, color, border], i) => (
+                  {([[result.agent_a, '#4ADE80', 'var(--g-border)', typedArgA], [result.agent_b, '#F87171', 'var(--r-border)', typedArgB]] as [Agent, string, string, string][]).map(([ag, color, border, typed], i) => (
                     <div key={i} style={{ background: 'var(--bg2)', border: `1px solid ${border}`, borderRadius: 8, overflow: 'hidden' }}>
                       <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)' }}>
                         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: '0.04em', color }}>{ag.name}</div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>{ag.stance}</div>
                       </div>
                       <div style={{ padding: '14px 16px' }}>
-                        <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.7 }}>{ag.argument}</div>
+                        <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.7 }}>{typed || ag.argument}</div>
                         <div style={{ marginTop: 10 }}><SpeakButton text={ag.argument} /></div>
                       </div>
                     </div>
@@ -142,12 +151,13 @@ export default function DebateRoom({ matches }: { matches: Match[] }) {
                     <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)' }}>Neutral Consensus · IBM Granite</span>
                     <SpeakButton text={result.consensus} />
                   </div>
-                  <div style={{ padding: '16px 18px', fontSize: 14, color: 'var(--t1)', lineHeight: 1.8 }}>{result.consensus}</div>
+                  <div style={{ padding: '16px 18px', fontSize: 14, color: 'var(--t1)', lineHeight: 1.8 }}>{typedConsensus || result.consensus}</div>
                 </div>
 
                 <Limitations items={result.limitations} />
               </>
             )}
+          </div>
           </div>
         )}
       </div>

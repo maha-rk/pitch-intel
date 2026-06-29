@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Limitations from './Limitations'
 import { SpeakButton } from './voice'
 import { exportReport } from './pdf'
+import { getLang } from './lang'
+import { useTypewriter } from './useTypewriter'
 
 const pdfBtnStyle: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', cursor: 'pointer',
@@ -71,6 +73,7 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
         away_team: selected.away_team,
         match_date: selected.match_date,
         briefing_type: briefingType,
+        lang: getLang(),
       })
       const res = await fetch(`http://localhost:8001/explainer/${selected.match_id}?${params}`)
       setResult(await res.json())
@@ -87,7 +90,8 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
   const t1c = tc(t1, hc)
   const t2c = tc(t2, ac)
 
-  const paragraphs = result ? result.briefing.split(/\n\n+/).filter(p => p.trim()) : []
+  const typedBriefing = useTypewriter(result?.briefing)
+  const paragraphs = typedBriefing ? typedBriefing.split(/\n\n+/).filter(p => p.trim()) : []
   const sections = briefingType === 'pre' ? PRE_SECTIONS : POST_SECTIONS
   const STATS = ['passes', 'shots', 'pressures', 'carries', 'tackles']
 

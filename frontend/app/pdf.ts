@@ -26,6 +26,7 @@ export function exportReport(opts: {
   meta?: string[]
   sections: ReportSection[]
   filename?: string
+  lang?: string
 }) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const W = doc.internal.pageSize.getWidth()
@@ -88,7 +89,8 @@ export function exportReport(opts: {
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p)
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...grey)
-    doc.text('Powered by IBM Granite (watsonx.ai)  ·  StatsBomb Open Data', M, H - 24)
+    const langNote = opts.lang && opts.lang !== 'en' ? `  ·  ${opts.lang.toUpperCase()}` : ''
+    doc.text(`Powered by IBM Granite (watsonx.ai)  ·  StatsBomb Open Data${langNote}`, M, H - 24)
     doc.text(`${p} / ${pages}`, W - M, H - 24, { align: 'right' })
   }
 

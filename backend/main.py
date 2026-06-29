@@ -1,6 +1,6 @@
 import os
 import tempfile
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Query
 from fastapi.middleware.cors import CORSMiddleware
 from backend.tactical_lens import get_world_cup_matches, get_key_moments, get_momentum, get_xg_flow, get_shot_map, get_pass_network
 from backend.pitch_agent import run_agent
@@ -33,8 +33,8 @@ def matches():
     return df[cols].to_dict(orient='records')
 
 @app.get("/tactical/{match_id}/{minute}")
-def tactical(match_id: int, minute: int):
-    return generate_heatmap_data(match_id, minute)
+def tactical(match_id: int, minute: int, lang: str = Query(default='en')):
+    return generate_heatmap_data(match_id, minute, lang)
 
 @app.get("/moments/{match_id}")
 def moments(match_id: int):
@@ -57,24 +57,25 @@ def pass_network(match_id: int):
     return get_pass_network(match_id)
 
 @app.get("/scout/{query}")
-def scout(query: str):
-    return search_players(query)
+def scout(query: str, lang: str = Query(default='en')):
+    return search_players(query, lang=lang)
 
 @app.post("/agent/query")
 def agent_query(body: dict):
     question = body.get('question', '')
     match_context = body.get('match_context')
+    lang = body.get('lang', 'en')
     if not question.strip():
         return {'error': 'No question provided'}
-    return run_agent(question, match_context)
+    return run_agent(question, match_context, lang=lang)
 
 @app.get("/referees")
 def referees():
     return get_referee_list()
 
 @app.get("/referee/{referee_name}")
-def referee(referee_name: str):
-    return analyse_referee(referee_name)
+def referee(referee_name: str, lang: str = Query(default='en')):
+    return analyse_referee(referee_name, lang=lang)
 
 @app.post("/fan-decoder")
 def fan_decoder(body: dict):
@@ -97,10 +98,20 @@ async def startup_event():
             print(f"Cache warm failed: {e}")
     threading.Thread(target=warm_cache, daemon=True).start()
 
+    def warm_rag():
+        try:
+            from backend.var_oracle.rag import get_rag
+            print("Pre-warming Docling RAG index...")
+            get_rag()
+            print("Docling RAG index ready.")
+        except Exception as e:
+            print(f"RAG warm failed: {e}")
+    threading.Thread(target=warm_rag, daemon=True).start()
+
 @app.get("/verdict/{match_id}")
-def match_verdict(match_id: int, home_team: str, away_team: str, home_score: int = 0, away_score: int = 0):
+def match_verdict(match_id: int, home_team: str, away_team: str, home_score: int = 0, away_score: int = 0, lang: str = Query(default='en')):
     from backend.tactical_lens import get_key_moments, get_momentum, get_xg_flow
-    from backend.granite import client as groq, MODEL as model
+    from backend.granite import client as groq, MODEL as model, lang_instruction
     try:
         moments = get_key_moments(match_id)
         xg = get_xg_flow(match_id)
@@ -121,7 +132,7 @@ def match_verdict(match_id: int, home_team: str, away_team: str, home_score: int
         )
         resp = groq.chat.completions.create(
             model=model,
-            messages=[{"role":"user","content":f"You are a senior football analyst. Based only on the StatsBomb data below, write a single paragraph (3-4 sentences) explaining why this match ended with this result. Be specific — cite xG, momentum, and key moments. Do not speculate beyond the data.\n\n{context}"}],
+            messages=[{"role":"user","content":f"{lang_instruction(lang)}You are a senior football analyst. Based only on the StatsBomb data below, write a single paragraph (3-4 sentences) explaining why this match ended with this result. Be specific — cite xG, momentum, and key moments. Do not speculate beyond the data.\n\n{context}"}],
             max_tokens=250
         )
         return {"verdict": resp.choices[0].message.content, "limitations": LIMITATIONS['tactical']}
@@ -129,28 +140,47 @@ def match_verdict(match_id: int, home_team: str, away_team: str, home_score: int
         return {"verdict": f"Analysis unavailable: {e}"}
 
 @app.get("/debate/{match_id}")
-def debate(match_id: int, home_team: str, away_team: str, home_score: int = 0, away_score: int = 0):
-    from backend.debate import run_debate
+def debate(match_id: int, home_team: str, away_team: str, home_score: int = 0, away_score: int = 0, lang: str = Query(default='en')):
+    from backend.langflow_pipeline import run_debate_flow
     from fastapi.responses import JSONResponse
     try:
-        return run_debate(match_id, home_team, away_team, home_score, away_score)
+        return run_debate_flow(match_id, home_team, away_team, home_score, away_score, lang=lang)
     except Exception as e:
         return JSONResponse(status_code=500, content={'error': str(e)})
 
 @app.get("/explainer/{match_id}")
-def explainer(match_id: int, home_team: str, away_team: str, match_date: str, briefing_type: str = 'post'):
+def explainer(match_id: int, home_team: str, away_team: str, match_date: str, briefing_type: str = 'post', lang: str = Query(default='en')):
     from fastapi.responses import JSONResponse
     try:
-        return generate_match_briefing(match_id, home_team, away_team, match_date, briefing_type)
+        return generate_match_briefing(match_id, home_team, away_team, match_date, briefing_type, lang=lang)
     except Exception as e:
         return JSONResponse(status_code=500, content={'error': str(e)})
 
 @app.get("/emotipulse/{match_id}")
-def emotipulse(match_id: int, home_team: str, away_team: str):
+def emotipulse(match_id: int, home_team: str, away_team: str, lang: str = Query(default='en')):
     from backend.emoti_pulse import generate_emoti_pulse
     from fastapi.responses import JSONResponse
     try:
-        return generate_emoti_pulse(match_id, home_team, away_team)
+        return generate_emoti_pulse(match_id, home_team, away_team, lang=lang)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={'error': str(e)})
+
+@app.get("/match-companion/{match_id}")
+def match_companion(match_id: int, home_team: str, away_team: str, lang: str = Query(default='en')):
+    from backend.audio_match import generate_companion
+    from fastapi.responses import JSONResponse
+    try:
+        return generate_companion(match_id, home_team, away_team, lang=lang)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={'error': str(e)})
+
+@app.get("/what-if/{match_id}")
+def what_if(match_id: int, home_team: str, away_team: str, remove_index: int = -1, lang: str = Query(default='en')):
+    from backend.what_if import run_what_if
+    from fastapi.responses import JSONResponse
+    try:
+        ri = remove_index if remove_index >= 0 else None
+        return run_what_if(match_id, home_team, away_team, remove_index=ri, lang=lang)
     except Exception as e:
         return JSONResponse(status_code=500, content={'error': str(e)})
 

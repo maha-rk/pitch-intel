@@ -1,7 +1,7 @@
 import json
 from . import get_player_positions, narrate_tactical_moment
 
-def generate_heatmap_data(match_id: int, minute: int):
+def generate_heatmap_data(match_id: int, minute: int, lang: str = 'en'):
     positions = get_player_positions(match_id)
     
     # Filter to 5-minute window
@@ -23,7 +23,7 @@ def generate_heatmap_data(match_id: int, minute: int):
         teams[team].append({'x': p['x'], 'y': p['y'], 'player': p['player'], 'minute': p['minute']})
     
     # Get AI narration
-    narration = narrate_tactical_moment(match_id, minute)
+    narration = narrate_tactical_moment(match_id, minute, lang)
     
     return {
         'match_id': match_id,

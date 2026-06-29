@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { MicButton } from './voice'
+import { getLang } from './lang'
 
 interface Match {
   match_id: number
@@ -63,7 +64,7 @@ function ToolCallBadge({ tc }: { tc: ToolCall }) {
         <span style={{ fontSize: 10, fontWeight: 700, color: meta.color, letterSpacing: '0.06em' }}>
           {meta.label}
         </span>
-        {Object.keys(tc.args).length > 0 && (
+        {typeof tc.args === 'object' && tc.args !== null && Object.keys(tc.args).length > 0 && (
           <span style={{ fontSize: 9, color: 'var(--t3)' }}>
             {Object.entries(tc.args).map(([k, v]) => `${k}=${v}`).join(' · ')}
           </span>
@@ -84,10 +85,89 @@ function ToolCallBadge({ tc }: { tc: ToolCall }) {
   )
 }
 
-function renderMarkdown(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br/>')
+function renderMarkdown(raw: string): string {
+  function inline(s: string): string {
+    return s
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*\n]+?)\*/g, '<em style="color:var(--t1)">$1</em>')
+      .replace(/`([^`\n]+?)`/g, '<code style="background:rgba(74,222,128,0.1);padding:1px 5px;border-radius:3px;font-size:11px;font-family:monospace;color:#4ADE80">$1</code>')
+  }
+
+  const isSep = (s: string) => /^\|[\s|:–\-]+\|?$/.test(s.trim())
+  const lines = raw.split('\n')
+  const parts: string[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const t = lines[i].trim()
+
+    // Table: header row followed by separator row
+    if (t.startsWith('|') && i + 1 < lines.length && isSep(lines[i + 1])) {
+      const rows: string[][] = []
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        if (!isSep(lines[i]))
+          rows.push(lines[i].trim().split('|').slice(1, -1).map(c => c.trim()))
+        i++
+      }
+      if (rows.length > 0) {
+        const [header, ...body] = rows
+        let tbl = '<table style="border-collapse:collapse;width:100%;margin:10px 0;font-size:12px">'
+        tbl += '<thead><tr>' + header.map(h =>
+          `<th style="padding:5px 10px;border:1px solid #1A3020;background:#0A1A0E;text-align:left;font-size:10px;font-weight:700;color:#4ADE80;letter-spacing:0.08em;text-transform:uppercase">${inline(h)}</th>`
+        ).join('') + '</tr></thead>'
+        tbl += '<tbody>' + body.map((row, ri) =>
+          `<tr style="background:${ri % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent'}">` +
+          row.map(c => `<td style="padding:5px 10px;border:1px solid #1A3020;color:var(--t2)">${inline(c)}</td>`).join('') +
+          '</tr>'
+        ).join('') + '</tbody></table>'
+        parts.push(tbl)
+      }
+      continue
+    }
+
+    // Headings
+    const hm = t.match(/^(#{1,3})\s+(.+)/)
+    if (hm) {
+      const sz = ['17px', '14px', '13px'][hm[1].length - 1]
+      parts.push(`<div style="font-weight:800;font-size:${sz};color:var(--t1);margin:10px 0 4px;line-height:1.3">${inline(hm[2])}</div>`)
+      i++; continue
+    }
+
+    // Numbered list
+    if (/^\d+\.\s+/.test(t)) {
+      const items: string[] = []
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^\d+\.\s+/, ''))
+        i++
+      }
+      parts.push('<ol style="margin:6px 0 6px 18px;padding:0">' +
+        items.map(it => `<li style="font-size:13px;color:var(--t2);line-height:1.75;margin-bottom:2px">${inline(it)}</li>`).join('') +
+        '</ol>')
+      continue
+    }
+
+    // Bullet list
+    if (t.startsWith('- ') || t.startsWith('* ')) {
+      const items: string[] = []
+      while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('* '))) {
+        items.push(lines[i].trim().slice(2))
+        i++
+      }
+      parts.push('<ul style="margin:6px 0 6px 18px;padding:0">' +
+        items.map(it => `<li style="font-size:13px;color:var(--t2);line-height:1.75;margin-bottom:2px">${inline(it)}</li>`).join('') +
+        '</ul>')
+      continue
+    }
+
+    // Empty line
+    if (!t) { parts.push('<div style="height:5px"></div>'); i++; continue }
+
+    // Paragraph
+    parts.push(`<p style="margin:0 0 5px;font-size:13px;color:var(--t2);line-height:1.8">${inline(t)}</p>`)
+    i++
+  }
+
+  return parts.join('')
 }
 
 export default function PitchAgent({ matches }: { matches: Match[] }) {
@@ -110,7 +190,7 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
     setMessages(prev => [...prev, { role: 'agent', content: '', loading: true }])
 
     try {
-      const body: Record<string, unknown> = { question }
+      const body: Record<string, unknown> = { question, lang: getLang() }
       if (selectedMatch) {
         body.match_context = {
           match_id: selectedMatch.match_id,

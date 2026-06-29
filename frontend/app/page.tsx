@@ -8,8 +8,13 @@ import EmotiPulse from './EmotiPulse'
 import PitchAgent from './PitchAgent'
 import RefereeLens from './RefereeLens'
 import DebateRoom from './DebateRoom'
+import WhatIfLab from './WhatIfLab'
+import MatchCompanion from './MatchCompanion'
 import Limitations from './Limitations'
 import { SpeakButton } from './voice'
+import LanguageSelector from './LanguageSelector'
+import { getLang } from './lang'
+import ThreePitch from './ThreePitch'
 
 interface Match {
   match_id: number
@@ -82,7 +87,7 @@ const TYPE_CONFIG: Record<string, { color: string; bg: string; label: string }> 
   'Shot':         { color: '#7DD3FC', bg: '#0C2A4A', label: 'Shot' },
 }
 
-const modules = ['VAR Oracle', 'TacticalLens', 'Pitch Agent', 'Scout Eye', 'Referee Lens', 'Match Explainer', 'EmotiPulse', 'Fan Decoder', 'Debate']
+const modules = ['VAR Oracle', 'TacticalLens', 'Pitch Agent', 'Scout Eye', 'Referee Lens', 'Match Explainer', 'EmotiPulse', 'Fan Decoder', 'Debate', 'What-If Lab', 'Match Companion']
 
 export default function Home() {
   const [activeModule, setActiveModule] = useState('VAR Oracle')
@@ -102,6 +107,7 @@ export default function Home() {
   const [mode, setMode] = useState<'beginner'|'fan'|'coach'>('fan')
   const [expandedMoment, setExpandedMoment] = useState<number|null>(null)
   const [tacticsView, setTacticsView] = useState<'overview'|'xg'|'shots'|'passes'|'penalties'>('overview')
+  const [pitchView, setPitchView] = useState<'2d'|'3d'>('2d')
   const [xgFlow, setXgFlow] = useState<XgPoint[]>([])
   const [shotMap, setShotMap] = useState<ShotPoint[]>([])
   const [passNetwork, setPassNetwork] = useState<PassNetwork|null>(null)
@@ -146,7 +152,7 @@ export default function Home() {
   const loadTactical = async (matchId: number, min: number) => {
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:8001/tactical/${matchId}/${min}`)
+      const res = await fetch(`http://localhost:8001/tactical/${matchId}/${min}?lang=${getLang()}`)
       const data = await res.json()
       setHeatmapData(data)
     } catch(e) {}
@@ -157,7 +163,7 @@ export default function Home() {
     if (!scoutQuery.trim()) return
     setScoutLoading(true)
     try {
-      const res = await fetch(`http://localhost:8001/scout/${encodeURIComponent(scoutQuery)}`)
+      const res = await fetch(`http://localhost:8001/scout/${encodeURIComponent(scoutQuery)}?lang=${getLang()}`)
       const data = await res.json()
       setScoutResults(data)
     } catch(e) {}
@@ -173,7 +179,7 @@ export default function Home() {
     if (!selectedMatch) return
     setWhyLoading(true)
     try {
-      const res = await fetch(`http://localhost:8001/verdict/${selectedMatch.match_id}?home_team=${encodeURIComponent(selectedMatch.home_team)}&away_team=${encodeURIComponent(selectedMatch.away_team)}&home_score=${selectedMatch.home_score ?? 0}&away_score=${selectedMatch.away_score ?? 0}`)
+      const res = await fetch(`http://localhost:8001/verdict/${selectedMatch.match_id}?home_team=${encodeURIComponent(selectedMatch.home_team)}&away_team=${encodeURIComponent(selectedMatch.away_team)}&home_score=${selectedMatch.home_score ?? 0}&away_score=${selectedMatch.away_score ?? 0}&lang=${getLang()}`)
       const data = await res.json()
       setWhyVerdict(data.verdict)
       setWhyLimitations(data.limitations)
@@ -257,9 +263,9 @@ export default function Home() {
         .wm-mark { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:0.16em; color:var(--t1); line-height:1; }
         .wm-mark b { color:var(--green); font-weight:inherit; }
         .wm-sub { font-family:'Inter',sans-serif; font-size:7px; font-weight:700; letter-spacing:0.16em; color:var(--t3); text-transform:uppercase; }
-        .nav { display:flex; height:100%; overflow-x:auto; flex:1; justify-content:center; }
+        .nav { display:flex; height:100%; overflow-x:auto; flex:1; justify-content:flex-start; gap:0; }
         .nav::-webkit-scrollbar { display:none; }
-        .nbtn { display:flex; align-items:center; padding:0 14px; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--t3); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color 0.12s,border-color 0.12s; font-family:'Inter',sans-serif; height:100%; }
+        .nbtn { display:flex; align-items:center; padding:0 9px; font-size:10.5px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--t3); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color 0.12s,border-color 0.12s; font-family:'Inter',sans-serif; height:100%; }
         .nbtn:hover { color:var(--t1); }
         .nbtn.on { color:var(--t1); border-bottom-color:var(--green); }
         .topbar-r { margin-left:auto; display:flex; align-items:center; gap:10px; flex-shrink:0; padding-left:20px; border-left:1px solid rgba(255,255,255,0.07); }
@@ -568,7 +574,7 @@ export default function Home() {
           <div className="lp-hero">
             <div className="lp-eyebrow"><div className="lp-eyebrow-dot"/>FIFA World Cup · AI Command Center</div>
             <h1 className="lp-title">PITCH<br/><span className="lp-title-accent">INTEL</span></h1>
-            <p className="lp-sub">Upload a match clip — YOLOv8 reads it, IBM Docling pulls the exact FIFA law, IBM Granite delivers the verdict. That&apos;s one of nine modules.</p>
+            <p className="lp-sub">Upload a match clip — YOLOv8 reads it, IBM Docling pulls the exact FIFA law, IBM Granite delivers the verdict. That&apos;s one of eleven modules.</p>
             <div className="lp-diff">
               {([
                 {n:'128', l1:'WC Matches', l2:'2018 + 2022 · StatsBomb', c:'#00D46A'},
@@ -588,18 +594,20 @@ export default function Home() {
           </div>
 
           {/* Module grid */}
-          <div className="lp-section-lbl">9 Working Modules · IBM Granite Powers All</div>
+          <div className="lp-section-lbl">11 Working Modules · IBM Granite Powers All</div>
           <div className="lp-grid">
             {([
-              {name:'VAR Oracle',     desc:'YOLOv8 reads footage frame-by-frame · IBM Docling extracts the exact FIFA law clause · IBM Granite delivers a verdict with the law text visible',tag:'YOLOv8 · Docling · Granite', c:'#F97316'},
+              {name:'VAR Oracle',     desc:'An explainable VAR companion — not a referee replacement. YOLOv8 reads the footage · IBM Docling RAG retrieves the exact FIFA law · IBM Granite explains why the decision aligns with the laws, with the retrieved clause visible',tag:'YOLOv8 · Docling RAG · Granite', c:'#F97316'},
               {name:'TacticalLens',   desc:'xG flow, shot maps, pass networks, auto-detected formations, penalty analysis, and match verdict from StatsBomb event data', tag:'StatsBomb Events',   c:'#3B7CF6'},
               {name:'Pitch Agent',    desc:'IBM Granite agent with 6 real StatsBomb tools (also exposed over MCP) — full reasoning chain visible, What-If counterfactuals grounded in real data', tag:'Tool Use · MCP', c:'#00D46A'},
               {name:'Scout Eye',      desc:'Natural-language search across 6,000+ WC players — FAISS embeddings, AI scouting reports',    tag:'FAISS · Semantic',   c:'#06B6D4'},
               {name:'Referee Lens',   desc:'Foul symmetry index + home bias metric across all 128 matches — AI consistency verdict per referee', tag:'128 Match Analysis', c:'#F59E0B'},
               {name:'Match Explainer',desc:'Pre/post briefings grounded in real StatsBomb stats — Beginner, Fan, and Coach modes',        tag:'3 Audience Modes',   c:'#8B5CF6'},
               {name:'EmotiPulse',     desc:'Per-minute atmosphere scoring via event formula with pulse SVG + broadcast AI report',         tag:'Minute-by-Minute',   c:'#EF4444'},
-              {name:'Fan Decoder',    desc:'Football AI chatbot in 9 languages with full World Cup context and conversation history — voice in, audio out',      tag:'9 Languages · Voice',        c:'#EC4899'},
+              {name:'Fan Decoder',    desc:'Football AI chatbot in 21 languages with full World Cup context and conversation history — voice in, audio out',      tag:'21 Languages · Voice',        c:'#EC4899'},
               {name:'Debate',         desc:'Two opposing IBM Granite agents argue the same match data — Advocate vs Skeptic — then a neutral Granite consensus verdict', tag:'Multi-Agent',        c:'#2DD4BF'},
+              {name:'What-If Lab',    desc:'Understand how much a single goal shaped a past result — remove it and re-run 10,000 xG Monte Carlo sims to see the computed shift, with IBM Granite explaining it. Explainability, not prediction', tag:'Monte Carlo · xG',   c:'#A855F7'},
+              {name:'Match Companion',desc:'Accessibility-first: IBM Granite turns a match into a spoken audio description for blind / low-vision fans, doubling as live captions for deaf fans — in 21 languages. Understand the match without seeing, hearing, or speaking its language', tag:'Accessibility · Voice · 21 Languages', c:'#22D3EE'},
             ] as {name:string;desc:string;tag:string;c:string}[]).map((m,i)=>(
               <div key={m.name} className="lp-card" style={{borderLeftColor:m.c}}>
                 <div className="lp-card-top">
@@ -681,8 +689,8 @@ export default function Home() {
               </button>
             ))}
           </div>
-          <div className="topbar-r">
-            <div className="live"><div className="lpip"/>IBM Granite</div>
+          <div className="topbar-r" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <LanguageSelector />
           </div>
         </div>
 
@@ -956,6 +964,13 @@ export default function Home() {
                         </div>
                         <span className="csub">Select minute · analyse shape</span>
                       </div>
+                      <div style={{display:'flex',gap:0,border:'1px solid var(--bd)',borderRadius:5,overflow:'hidden',alignSelf:'center',marginLeft:'auto',marginRight:0}}>
+                        {(['2d','3d'] as const).map(v=>(
+                          <button key={v} onClick={()=>setPitchView(v)} style={{padding:'5px 12px',background:pitchView===v?'var(--green)':'var(--bg2)',color:pitchView===v?'#000':'var(--t3)',border:'none',cursor:'pointer',fontSize:10,fontWeight:800,letterSpacing:'0.08em',fontFamily:'Inter,sans-serif',textTransform:'uppercase'}}>
+                            {v}
+                          </button>
+                        ))}
+                      </div>
                       <div className="pctrl">
                         <span className="pcl">Minute</span>
                         <div style={{flex:1,display:'flex',flexDirection:'column',gap:3}}>
@@ -974,6 +989,15 @@ export default function Home() {
                         </button>
                       </div>
                       <div className="pfield">
+                        {pitchView==='3d' && heatmapData ? (
+                          <ThreePitch
+                            positions={heatmapData.teams as any}
+                            teamColors={['#3B7CF6','#F87171']}
+                            height={340}
+                            minute={heatmapData.minute}
+                          />
+                        ) : (
+                        <>
                         <svg className="psvg" viewBox="0 0 120 80" preserveAspectRatio="xMidYMid meet">
                           {Array.from({length:10},(_,i)=>(
                             <rect key={i} x={0} y={i*8} width={120} height={8} fill={i%2===0?'#071408':'#050F06'}/>
@@ -1009,6 +1033,8 @@ export default function Home() {
                             <div className="petxt">Select minute · Analyse Shape</div>
                             <div style={{fontSize:8,color:'var(--t3)',opacity:0.5}}>22 ghost positions shown above</div>
                           </div>
+                        )}
+                        </>
                         )}
                       </div>
                       {heatmapData ? (
@@ -1422,8 +1448,14 @@ export default function Home() {
           {/* DEBATE */}
           {activeModule==='Debate'&&(<DebateRoom matches={matches} />)}
 
+          {/* WHAT-IF LAB */}
+          {activeModule==='What-If Lab'&&(<WhatIfLab matches={matches} />)}
+
+          {/* MATCH COMPANION */}
+          {activeModule==='Match Companion'&&(<MatchCompanion matches={matches} />)}
+
           {/* COMING SOON */}
-          {!['TacticalLens','Scout Eye','VAR Oracle','Match Explainer','Fan Decoder','EmotiPulse','Pitch Agent','Referee Lens','Debate'].includes(activeModule)&&(
+          {!['TacticalLens','Scout Eye','VAR Oracle','Match Explainer','Fan Decoder','EmotiPulse','Pitch Agent','Referee Lens','Debate','What-If Lab','Match Companion'].includes(activeModule)&&(
             <div className="coming">
               <div className="comingh">{activeModule}</div>
               <div className="comings">Module in development</div>

@@ -5,7 +5,7 @@ import pandas as pd
 
 load_dotenv('backend/.env')
 
-from backend.granite import client, MODEL
+from backend.granite import client, MODEL, lang_instruction
 from backend.transparency import LIMITATIONS
 
 def get_match_stats(match_id: int):
@@ -25,7 +25,7 @@ def get_match_stats(match_id: int):
         }
     return stats
 
-def generate_match_briefing(match_id: int, home_team: str, away_team: str, match_date: str, briefing_type: str = 'post'):
+def generate_match_briefing(match_id: int, home_team: str, away_team: str, match_date: str, briefing_type: str = 'post', lang: str = 'en'):
     stats = get_match_stats(match_id)
     stats_text = ''
     for team, s in stats.items():
@@ -52,7 +52,7 @@ Be specific about the numbers. Like a Guardian football correspondent."""
 
     response = client.chat.completions.create(
         model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role": "user", "content": lang_instruction(lang) + prompt}],
         max_tokens=400
     )
     return {

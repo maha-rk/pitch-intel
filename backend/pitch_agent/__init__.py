@@ -3,7 +3,7 @@ import json
 from dotenv import load_dotenv
 
 load_dotenv('backend/.env')
-from backend.granite import client, MODEL
+from backend.granite import client, MODEL, lang_instruction
 
 TOOLS = [
     {
@@ -95,11 +95,22 @@ TOOLS = [
 ]
 
 
-def _call_tool(name: str, args: dict) -> str:
+def _call_tool(name: str, args) -> str:
     try:
+        # Granite occasionally passes a bare value instead of an object
+        if not isinstance(args, dict):
+            if name in ('get_momentum', 'get_xg_flow', 'get_key_moments', 'get_pass_network'):
+                args = {'match_id': args}
+            elif name == 'search_players':
+                args = {'query': str(args)}
+            elif name == 'get_emotion_arc':
+                args = {'match_id': args}
+            else:
+                args = {}
+
         if name == 'get_momentum':
             from backend.tactical_lens import get_momentum
-            data = get_momentum(args['match_id'])
+            data = get_momentum(int(args['match_id']))
             teams: dict = {}
             for pt in data:
                 t = pt['team']
@@ -116,7 +127,7 @@ def _call_tool(name: str, args: dict) -> str:
 
         elif name == 'get_xg_flow':
             from backend.tactical_lens import get_xg_flow
-            data = get_xg_flow(args['match_id'])
+            data = get_xg_flow(int(args['match_id']))
             teams: dict = {}
             for pt in data:
                 t = pt['team']
@@ -132,12 +143,12 @@ def _call_tool(name: str, args: dict) -> str:
 
         elif name == 'get_key_moments':
             from backend.tactical_lens import get_key_moments
-            data = get_key_moments(args['match_id'])
+            data = get_key_moments(int(args['match_id']))
             return json.dumps(data[:20])
 
         elif name == 'get_pass_network':
             from backend.tactical_lens import get_pass_network
-            data = get_pass_network(args['match_id'])
+            data = get_pass_network(int(args['match_id']))
             team_totals: dict = {}
             for c in data['connections']:
                 t = c['team']
@@ -151,7 +162,7 @@ def _call_tool(name: str, args: dict) -> str:
         elif name == 'get_emotion_arc':
             from backend.emoti_pulse import get_emotion_arc
             data = get_emotion_arc(
-                args['match_id'],
+                int(args['match_id']),
                 args.get('home_team', ''),
                 args.get('away_team', '')
             )
@@ -180,11 +191,12 @@ def _call_tool(name: str, args: dict) -> str:
         return json.dumps({'error': str(e)})
 
 
-def run_agent(question: str, match_context: dict | None = None) -> dict:
+def run_agent(question: str, match_context: dict | None = None, lang: str = 'en') -> dict:
     q_lower = question.lower().strip()
     is_counterfactual = any(q_lower.startswith(pfx) for pfx in ('what if', 'what would', 'if the', 'suppose', 'imagine if', 'had the'))
 
     system = (
+        lang_instruction(lang) +
         "You are Pitch Intel — an elite AI football analyst powered by IBM Granite. "
         "You have access to real StatsBomb World Cup data via tools. "
         "ALWAYS call the relevant tools first before answering — ground every claim in real data. "
@@ -248,6 +260,16 @@ def run_agent(question: str, match_context: dict | None = None) -> dict:
         for tc in msg.tool_calls:
             fn_name = tc.function.name
             fn_args = json.loads(tc.function.arguments)
+            # Granite sometimes double-encodes: args comes back as a JSON string
+            # of a JSON object rather than a parsed dict. Unwrap it here so the
+            # log shows clean key=value pairs and _call_tool receives a real dict.
+            if not isinstance(fn_args, dict):
+                try:
+                    inner = json.loads(fn_args)
+                    if isinstance(inner, dict):
+                        fn_args = inner
+                except (json.JSONDecodeError, TypeError):
+                    pass
             result = _call_tool(fn_name, fn_args)
 
             tool_calls_log.append({

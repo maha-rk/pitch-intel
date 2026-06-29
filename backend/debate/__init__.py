@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 load_dotenv('backend/.env')
 
-from backend.granite import client, MODEL
+from backend.granite import client, MODEL, lang_instruction
 from backend.transparency import LIMITATIONS
 
 
@@ -37,11 +37,12 @@ def _build_context(match_id, home_team, away_team, home_score, away_score):
     return context, winner
 
 
-def _ask(system, context):
+def _ask(system, context, lang='en'):
+    prefix = lang_instruction(lang)
     resp = client.chat.completions.create(
         model=MODEL,
         messages=[
-            {"role": "system", "content": system},
+            {"role": "system", "content": prefix + system},
             {"role": "user", "content": f"Match data:\n{context}"},
         ],
         max_tokens=200,
@@ -50,7 +51,7 @@ def _ask(system, context):
     return (resp.choices[0].message.content or "").strip()
 
 
-def run_debate(match_id, home_team, away_team, home_score=0, away_score=0):
+def run_debate(match_id, home_team, away_team, home_score=0, away_score=0, lang='en'):
     context, winner = _build_context(match_id, home_team, away_team, home_score, away_score)
     subject = winner or 'the favourite'
     topic = f"Did {subject} deserve this result?" if winner else "Was this draw a fair reflection of the game?"
@@ -58,19 +59,19 @@ def run_debate(match_id, home_team, away_team, home_score=0, away_score=0):
     arg_for = _ask(
         "You are a confident football pundit. Argue that the result was fully DESERVED, "
         "citing only the data given (xG, momentum, goals). 2-3 sharp sentences. No hedging.",
-        context,
+        context, lang,
     )
     arg_against = _ask(
         "You are a contrarian football pundit. Argue that the result FLATTERED the winner "
         "(or that the scoreline misrepresents the play), citing only the data given. "
         "2-3 sharp sentences. No hedging.",
-        context,
+        context, lang,
     )
     consensus = _ask(
         f"You are a neutral senior analyst refereeing a debate. Pundit A argued the result was deserved: "
         f"\"{arg_for}\" Pundit B argued it flattered the winner: \"{arg_against}\" "
         "Weigh both against the data and deliver a balanced 2-sentence consensus verdict.",
-        context,
+        context, lang,
     )
 
     return {

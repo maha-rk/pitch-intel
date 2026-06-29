@@ -8,7 +8,7 @@ import faiss
 
 load_dotenv('backend/.env')
 
-from backend.granite import client, MODEL
+from backend.granite import client, MODEL, lang_instruction
 encoder = SentenceTransformer('all-MiniLM-L6-v2')
 
 def build_player_index():
@@ -61,12 +61,12 @@ def get_index():
         _cache = build_player_index()
     return _cache
 
-def _generate_report(p, desc):
+def _generate_report(p, desc, lang='en'):
     report = client.chat.completions.create(
         model=MODEL,
         messages=[{
             "role": "user",
-            "content": f"Generate a concise 3-sentence scouting report for this footballer based on their shooting data. Focus on finishing ability, shot quality, and style:\n\n{desc}"
+            "content": lang_instruction(lang) + f"Generate a concise 3-sentence scouting report for this footballer based on their shooting data. Focus on finishing ability, shot quality, and style:\n\n{desc}"
         }],
         max_tokens=150
     )
@@ -92,7 +92,7 @@ def _generate_report(p, desc):
         },
     }
 
-def search_players(query: str, top_k: int = 3):
+def search_players(query: str, top_k: int = 3, lang: str = 'en'):
     index, player_list, descriptions = get_index()
 
     query_embedding = encoder.encode([query]).astype(np.float32)
@@ -100,6 +100,6 @@ def search_players(query: str, top_k: int = 3):
 
     matched = [(player_list[idx], descriptions[idx]) for idx in indices[0]]
     with ThreadPoolExecutor(max_workers=3) as executor:
-        results = list(executor.map(lambda args: _generate_report(*args), matched))
+        results = list(executor.map(lambda args: _generate_report(*args, lang=lang), matched))
 
     return results

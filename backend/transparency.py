@@ -41,4 +41,14 @@ LIMITATIONS = {
         "Search ranks players on World Cup event data only — club form and recent seasons are not included.",
         "Sample sizes vary: a player with few tournament minutes can rank high on a small, noisy sample.",
     ],
+    'what_if': [
+        "Each shot's xG is treated as an independent scoring probability; the simulation does not model game state, fatigue, red cards, or tactical changes.",
+        "Removing a goal removes only that one shot — it does not re-derive how the rest of the match would have been played in response.",
+        "Probabilities come from 10,000 Monte Carlo runs on a fixed seed: reproducible and computed from real data, but still a model estimate, not a prediction of reality.",
+    ],
+    'audio_match': [
+        "The audio description covers the headline events in the StatsBomb data (goals, cards, substitutions) — it is not a continuous play-by-play of every touch.",
+        "Spoken output uses the browser's built-in text-to-speech; voice quality and language coverage depend on the user's device.",
+        "It conveys what happened from event data, not the live emotion, crowd, or visual drama a sighted viewer would also take in.",
+    ],
 }

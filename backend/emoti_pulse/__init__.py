@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv('backend/.env')
 
-from backend.granite import client, MODEL
+from backend.granite import client, MODEL, lang_instruction
 from backend.transparency import LIMITATIONS
 
 
@@ -161,7 +161,7 @@ def get_emotion_arc(match_id: int, home_team: str = '', away_team: str = '') -> 
     }
 
 
-def generate_emoti_pulse(match_id: int, home_team: str, away_team: str) -> dict:
+def generate_emoti_pulse(match_id: int, home_team: str, away_team: str, lang: str = 'en') -> dict:
     arc_data = get_emotion_arc(match_id, home_team, away_team)
     if 'error' in arc_data:
         return arc_data
@@ -214,7 +214,7 @@ STRICT RULES:
 
     report = client.chat.completions.create(
         model=MODEL,
-        messages=[{'role': 'user', 'content': prompt}],
+        messages=[{'role': 'user', 'content': lang_instruction(lang) + prompt}],
         max_tokens=210,
     ).choices[0].message.content.strip()
 

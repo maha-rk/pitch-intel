@@ -9,6 +9,7 @@ load_dotenv('backend/.env')
 
 from backend.granite import client, MODEL
 from backend.transparency import LIMITATIONS
+from backend.guardian import check_verdict as _guardian_check
 
 try:
     from ultralytics import YOLO as _YOLO
@@ -91,7 +92,12 @@ def _parse_pdf_with_docling(pdf_path: str) -> str | None:
     if not DOCLING_AVAILABLE:
         return None
     try:
-        converter = DocumentConverter()
+        from docling.document_converter import PdfFormatOption
+        from docling.datamodel.pipeline_options import PdfPipelineOptions
+        opts = PdfPipelineOptions()
+        opts.do_ocr = False
+        opts.do_table_structure = False
+        converter = DocumentConverter(format_options={'pdf': PdfFormatOption(pipeline_options=opts)})
         result = converter.convert(pdf_path)
         return result.document.export_to_markdown()
     except Exception as e:
@@ -397,11 +403,29 @@ def generate_verdict(cv_data: dict, cv_details: dict, filename: str = '') -> dic
     traj_desc = motion['direction'] if motion['trackable'] else 'not trackable'
     spread_desc = ', '.join(formation['formations']) if formation['detectable'] else 'insufficient data'
 
-    # --- Compact laws (all 5 so Granite picks correctly) ---
-    all_laws = '\n\n'.join(
-        f'[{k.upper()}] {FIFA_LAWS[k][0]}:\n{FIFA_LAWS[k][1][:280]}'
-        for k in ('handball', 'foul', 'tackle', 'offside', 'simulation')
+    # --- RAG: retrieve relevant FIFA law chunks via semantic search ---
+    incident_type, _ = classify_incident(cv_data)
+    from backend.var_oracle.rag import get_rag
+    rag_query = (
+        f"{incident_type} football incident: "
+        f"ball at {'arm/chest height' if avg_ball_h < 0.40 else 'upper-body' if avg_ball_h < 0.52 else 'ground level'}, "
+        f"{'significant player contact' if max_overlap > 0.04 else 'light contact' if max_overlap > 0.015 else 'no contact'}, "
+        f"ball trajectory {traj_desc}"
     )
+    rag = get_rag()
+    rag_chunks = rag.retrieve(rag_query, k=2) if rag else []
+    rag_used = bool(rag_chunks)
+
+    if rag_chunks:
+        all_laws = '\n\n'.join(
+            f'[RAG chunk {i+1} — {c["heading"]} (score={c["score"]})]:\n{c["text"]}'
+            for i, c in enumerate(rag_chunks)
+        )
+    else:
+        all_laws = '\n\n'.join(
+            f'[{k.upper()}] {FIFA_LAWS[k][0]}:\n{FIFA_LAWS[k][1][:280]}'
+            for k in ('handball', 'foul', 'tackle', 'offside', 'simulation')
+        )
 
     # --- Filename hint — only if it contains sport-specific keywords ---
     fn_lower = (filename or '').lower()
@@ -493,12 +517,6 @@ Respond with ONLY valid JSON — no prose before or after:
             'confidence': 0.50,
         }
 
-    # Surface the actual FIFA law text that grounded this verdict
-    incident_key = verdict.get('incident_type', 'foul')
-    if incident_key not in FIFA_LAWS:
-        incident_key = 'foul'
-    law_name, law_text = get_relevant_law(incident_key)
-
     # Pick the most visually interesting frame for the detection preview.
     # Prefer frames where the ball is visible (+8 bonus) so the preview is informative even on no-contact clips.
     best_frame = max(frames, key=lambda f: f['max_player_overlap'] * 10 + f['person_count'] + (8 if f['ball_found'] else 0), default=None)
@@ -513,14 +531,35 @@ Respond with ONLY valid JSON — no prose before or after:
             'contact': best_frame['max_player_overlap'] > 0.015,
         }
 
+    # Surface the actual FIFA law text that grounded this verdict
+    incident_key = verdict.get('incident_type', 'foul')
+    if incident_key not in FIFA_LAWS:
+        incident_key = 'foul'
+    law_name, law_text = get_relevant_law(incident_key)
+
+    # --- Granite Guardian trust verification ---
+    top_rag_score = rag_chunks[0]['score'] if rag_chunks else None
+    law_ctx = rag_chunks[0]['text'] if rag_chunks else FIFA_LAWS.get(incident_key, ('', ''))[1]
+    guardian_result = _guardian_check(
+        verdict_text=verdict.get('reasoning', '') + ' ' + verdict.get('what_happened', ''),
+        law_context=law_ctx,
+        rag_score=top_rag_score,
+    )
+
     return {
         **verdict,
         'limitations': LIMITATIONS['var_oracle'],
+        'guardian_check': guardian_result,
         'detection_preview': detection_preview,
         'law_chunk': {
-            'name': law_name,
-            'text': law_text,
-            'source': 'Docling PDF parse' if (os.path.exists(os.path.join(os.path.dirname(__file__), 'fifa_laws.pdf')) and DOCLING_AVAILABLE) else 'FIFA Laws of the Game (hardcoded excerpt)',
+            'name': rag_chunks[0]['heading'] if rag_chunks else law_name,
+            'text': rag_chunks[0]['text'] if rag_chunks else law_text,
+            'source': 'Docling RAG — semantic retrieval' if rag_used else (
+                'Docling PDF parse' if (os.path.exists(os.path.join(os.path.dirname(__file__), 'fifa_laws.pdf')) and DOCLING_AVAILABLE)
+                else 'FIFA Laws of the Game (hardcoded excerpt)'
+            ),
+            'rag_chunks': rag_chunks,
+            'rag_query': rag_query if rag_used else None,
         },
         'cv_findings': {
             'duration_seconds': cv_data['duration_seconds'],
@@ -532,7 +571,8 @@ Respond with ONLY valid JSON — no prose before or after:
             'ball_trajectory': traj_desc,
             'ball_speed': motion.get('speed_desc', 'unknown'),
             'player_spread': spread_desc,
-            'docling_used': os.path.exists(os.path.join(os.path.dirname(__file__), 'fifa_laws.pdf')) and DOCLING_AVAILABLE,
+            'docling_used': DOCLING_AVAILABLE and os.path.exists(os.path.join(os.path.dirname(__file__), 'fifa_laws.pdf')),
+            'rag_used': rag_used,
         },
     }
 

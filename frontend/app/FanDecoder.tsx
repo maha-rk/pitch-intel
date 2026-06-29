@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { MicButton, SpeakButton } from './voice'
+import { getLang, setLang as setGlobalLang } from './lang'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -68,6 +69,17 @@ export default function FanDecoder() {
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Keep in sync with the global language selector (nav header + other modules).
+  useEffect(() => {
+    const sync = () => {
+      const found = LANGUAGES.find(l => l.code === getLang())
+      if (found) setLang(found)
+    }
+    sync()
+    window.addEventListener('lang-change', sync)
+    return () => window.removeEventListener('lang-change', sync)
   }, [])
 
   const ask = async (q?: string) => {
@@ -144,7 +156,7 @@ export default function FanDecoder() {
                 {LANGUAGES.map(l => (
                   <div
                     key={l.code}
-                    onClick={() => { setLang(l); setLangOpen(false) }}
+                    onClick={() => { setLang(l); setGlobalLang(l.code); setLangOpen(false) }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '8px 12px', cursor: 'pointer',

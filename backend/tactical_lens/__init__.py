@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv('backend/.env')
 
-from backend.granite import client, GRANITE_MODEL
+from backend.granite import client, GRANITE_MODEL, lang_instruction
 
 def get_match_events(match_id: int):
     events = sb.events(match_id=match_id)
@@ -21,14 +21,53 @@ def get_world_cup_matches():
         return matches_2018
 
 def get_player_positions(match_id: int):
+    """Return per-player positions. Uses StatsBomb 360 freeze-frames when available,
+    falls back to carry-event positions otherwise."""
+    try:
+        frames_360 = sb.frames(match_id=match_id)
+        if frames_360 is not None and not frames_360.empty:
+            rows = []
+            for _, row in frames_360.iterrows():
+                minute = int(row.get('minute', 0)) if pd.notna(row.get('minute')) else 0
+                ff = row.get('freeze_frame') or []
+                if not isinstance(ff, list):
+                    continue
+                for player_entry in ff:
+                    if not isinstance(player_entry, dict):
+                        continue
+                    loc = player_entry.get('location', [])
+                    teammate = player_entry.get('teammate', False)
+                    actor = player_entry.get('actor', False)
+                    player = player_entry.get('player', {})
+                    pname = player.get('name', 'Unknown') if isinstance(player, dict) else str(player)
+                    if isinstance(loc, list) and len(loc) >= 2:
+                        rows.append({
+                            'player': pname,
+                            'x': float(loc[0]),
+                            'y': float(loc[1]),
+                            'minute': minute,
+                            'team': 'home' if teammate else 'away',
+                            'source': '360',
+                            'is_actor': bool(actor),
+                        })
+            if rows:
+                print(f'[TacticalLens] Using StatsBomb 360 data: {len(rows)} positions')
+                return rows
+    except Exception as e:
+        print(f'[TacticalLens] 360 data unavailable ({e}), falling back to carry events')
+
+    # Fallback: derive positions from ball-carrier events
     events = get_match_events(match_id)
     tracking = events[events['type'] == 'Carry'][['player', 'location', 'minute', 'team']]
     tracking = tracking.dropna(subset=['location'])
     tracking['x'] = tracking['location'].apply(lambda loc: loc[0] if isinstance(loc, list) else None)
     tracking['y'] = tracking['location'].apply(lambda loc: loc[1] if isinstance(loc, list) else None)
-    return tracking.dropna(subset=['x', 'y']).to_dict(orient='records')
+    result = tracking.dropna(subset=['x', 'y']).to_dict(orient='records')
+    for r in result:
+        r['source'] = 'carry'
+    return result
 
-def narrate_tactical_moment(match_id: int, minute: int):
+def narrate_tactical_moment(match_id: int, minute: int, lang: str = 'en'):
     events = get_match_events(match_id)
     window = events[(events['minute'] >= minute) & (events['minute'] <= minute + 5)]
     summary = window[['type', 'player', 'team', 'minute']].dropna().to_string()
@@ -36,7 +75,7 @@ def narrate_tactical_moment(match_id: int, minute: int):
         model=GRANITE_MODEL,
         messages=[{
             "role": "user",
-            "content": f"You are an expert football analyst. Narrate what is tactically happening in this sequence of match events in 2-3 sentences, focusing on tactical patterns and what it means for the match:\n\n{summary}"
+            "content": lang_instruction(lang) + f"You are an expert football analyst. Narrate what is tactically happening in this sequence of match events in 2-3 sentences, focusing on tactical patterns and what it means for the match:\n\n{summary}"
         }],
         max_tokens=200
     )

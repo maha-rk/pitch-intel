@@ -26,12 +26,17 @@ interface CVFindings {
   ball_speed: string
   player_spread: string
   docling_used: boolean
+  rag_used?: boolean
 }
+
+interface RagChunk { heading: string; text: string; score: number }
 
 interface LawChunk {
   name: string
   text: string
   source: string
+  rag_chunks?: RagChunk[]
+  rag_query?: string
 }
 
 interface Verdict {
@@ -47,6 +52,13 @@ interface Verdict {
   detection_preview?: DetectionPreview
   cv_findings: CVFindings
   law_chunk?: LawChunk
+  guardian_check?: {
+    trusted: boolean
+    risk_label: 'LOW' | 'MEDIUM' | 'HIGH'
+    detail: string
+    method: 'granite-guardian' | 'granite-selfcheck'
+    rag_score: number | null
+  }
 }
 
 const PIPELINE_STEPS = [
@@ -54,6 +66,7 @@ const PIPELINE_STEPS = [
   { label: 'YOLOv8 · Computer Vision', sub: 'Detecting players, ball, contact', time: 800 },
   { label: 'Docling · FIFA Laws', sub: 'Extracting relevant rule from PDF', time: 5000 },
   { label: 'IBM Granite · Verdict', sub: 'Cross-referencing CV output with rulebook', time: 9000 },
+  { label: 'Granite Guardian · Trust Check', sub: 'Verifying verdict is grounded in law text', time: 11500 },
 ]
 
 const VAR_CONFIG = {
@@ -325,7 +338,7 @@ export default function VAROracle() {
       }
       const data: Verdict = await res.json()
       timers.current.forEach(clearTimeout)
-      setStep(4)
+      setStep(5)
       setLawManuallyToggled(false)
       setOpenLaw(null)
       setTimeout(() => { setVerdict(data); setLoading(false) }, 400)
@@ -345,13 +358,14 @@ export default function VAROracle() {
       {/* ── Module Header ── */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: 5 }}>
-          Module 03 · Computer Vision + AI Rulebook
+          Module 01 · Computer Vision + AI Rulebook
         </div>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, letterSpacing: '0.06em', color: 'var(--t1)', lineHeight: 1 }}>VAR Oracle</div>
         <div style={{ fontSize: 13, color: 'var(--t2)', marginTop: 7, lineHeight: 1.6, maxWidth: 640 }}>
-          Upload a match clip. <strong style={{ color: 'var(--t1)' }}>YOLOv8</strong> analyses the footage frame-by-frame,{' '}
-          <strong style={{ color: 'var(--t1)' }}>Docling</strong> extracts the relevant FIFA law, and{' '}
-          <strong style={{ color: 'var(--t1)' }}>IBM Granite</strong> delivers a structured referee verdict.
+          An explainable VAR companion — it helps you understand a decision, it does not replace the referee.{' '}
+          Upload a match clip: <strong style={{ color: 'var(--t1)' }}>YOLOv8</strong> reads the footage frame-by-frame,{' '}
+          <strong style={{ color: 'var(--t1)' }}>Docling</strong> retrieves the exact FIFA law that applies, and{' '}
+          <strong style={{ color: 'var(--t1)' }}>IBM Granite</strong> explains <em>why</em> — with the law text and evidence shown.
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           {['YOLOv8 · Computer Vision', 'Docling · PDF Parsing', 'IBM Granite · LLM', 'FIFA Laws of the Game'].map(tag => (
@@ -479,7 +493,9 @@ export default function VAROracle() {
                 </span>
               )}
             </div>
-            <span style={{ fontSize: 10, color: 'var(--t3)' }}>{verdict?.cv_findings.docling_used ? 'Docling PDF parse' : 'Hardcoded excerpts · drop fifa_laws.pdf to activate Docling'}</span>
+            <span style={{ fontSize: 10, color: verdict?.cv_findings.rag_used ? 'var(--green)' : 'var(--t3)' }}>
+              {verdict?.cv_findings.rag_used ? '✓ Docling RAG — semantic retrieval' : verdict?.cv_findings.docling_used ? 'Docling PDF parse' : 'Hardcoded excerpts'}
+            </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {FIFA_LAWS_REF.map((law, i) => {
@@ -573,13 +589,36 @@ export default function VAROracle() {
                 </div>
               </div>
 
-              {/* Confidence + VAR action */}
-              <div style={{ padding: '20px 24px', borderLeft: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, minWidth: 130 }}>
+              {/* Confidence + VAR action + Guardian trust */}
+              <div style={{ padding: '16px 24px', borderLeft: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, minWidth: 148 }}>
                 <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 48, color: vc.color, lineHeight: 1 }}>{confidencePct}%</div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t3)' }}>Confidence</div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t3)' }}>Granite Confidence</div>
                 <div style={{ padding: '6px 14px', borderRadius: 4, background: vc.bg, border: `1px solid ${vc.color}50`, textAlign: 'center' }}>
                   <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: '0.08em', color: vc.color }}>{vc.label}</div>
                 </div>
+                {verdict.guardian_check && (() => {
+                  const g = verdict.guardian_check
+                  const gColor = g.risk_label === 'LOW' ? '#4ADE80' : g.risk_label === 'MEDIUM' ? '#FBBF24' : '#F87171'
+                  const gBg   = g.risk_label === 'LOW' ? '#14532D' : g.risk_label === 'MEDIUM' ? '#451A03' : '#450A0A'
+                  return (
+                    <div style={{ width: '100%', padding: '8px 10px', background: gBg, border: `1px solid ${gColor}50`, borderRadius: 5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: gColor, flexShrink: 0 }} />
+                        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: gColor }}>
+                          {g.method === 'granite-guardian' ? 'Guardian' : 'Self-check'} · {g.risk_label}
+                        </span>
+                      </div>
+                      {g.rag_score != null && (
+                        <div style={{ fontSize: 9, color: 'var(--t3)', marginBottom: 2 }}>
+                          RAG match <strong style={{ color: gColor }}>{(g.rag_score * 100).toFixed(0)}%</strong>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 9, color: 'var(--t2)', lineHeight: 1.35 }}>
+                        {g.trusted ? '✓ Verdict grounded in FIFA law' : '⚠ Verify against law text'}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
 
@@ -609,7 +648,7 @@ export default function VAROracle() {
                   ['Ball Visible', `${verdict.cv_findings.ball_frame_count} / ${verdict.cv_findings.frames_analysed} frames`],
                   ['Contact', verdict.cv_findings.contact_detected ? 'Yes' : 'No'],
                   ['Ball Height', verdict.cv_findings.ball_height],
-                  ['Docling PDF', verdict.cv_findings.docling_used ? 'Active' : 'Fallback'],
+                  ['Docling RAG', verdict.cv_findings.rag_used ? 'Active · Semantic' : verdict.cv_findings.docling_used ? 'Active · PDF' : 'Fallback'],
                 ] as [string, string][]).map(([label, value]) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 11, color: 'var(--t3)', flexShrink: 0 }}>{label}</span>
@@ -635,6 +674,33 @@ export default function VAROracle() {
                 )}
               </div>
             </div>
+
+            {/* Docling RAG chunks */}
+            {verdict.law_chunk?.rag_chunks && verdict.law_chunk.rag_chunks.length > 0 && (
+              <div style={{ background: 'var(--bg2)', border: '1px solid #3B2800', borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{ padding: '9px 14px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#EAB308' }}>Docling RAG · Retrieved Law Chunks</span>
+                  <span style={{ fontSize: 9, color: 'var(--green)', fontWeight: 700 }}>Semantic search · FAISS index</span>
+                </div>
+                {verdict.law_chunk.rag_query && (
+                  <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--bd)', background: '#0A1400' }}>
+                    <span style={{ fontSize: 9, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Query: </span>
+                    <span style={{ fontSize: 10, color: 'var(--t2)', fontStyle: 'italic' }}>{verdict.law_chunk.rag_query}</span>
+                  </div>
+                )}
+                <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {verdict.law_chunk.rag_chunks.map((chunk, i) => (
+                    <div key={i} style={{ background: 'var(--bg)', border: '1px solid var(--bd)', borderLeft: '3px solid #A16207', borderRadius: '0 4px 4px 0', padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: '#EAB308', letterSpacing: '0.08em' }}>{chunk.heading}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--green)', background: '#0A1D14', padding: '2px 7px', borderRadius: 3 }}>similarity {chunk.score.toFixed(3)}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--t2)', lineHeight: 1.7, maxHeight: 100, overflowY: 'auto' }}>{chunk.text.slice(0, 300)}…</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* IBM Granite reasoning */}
             <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden' }}>

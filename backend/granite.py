@@ -22,6 +22,22 @@ returning an object with .choices[0].message.content (and .tool_calls).
 import os
 import json
 import types
+
+LANG_NAMES = {
+    'en': 'English', 'es': 'Spanish', 'fr': 'French',
+    'pt': 'Portuguese', 'ar': 'Arabic', 'de': 'German',
+    'it': 'Italian', 'nl': 'Dutch', 'ja': 'Japanese',
+    'zh': 'Chinese (Simplified)', 'hi': 'Hindi', 'tr': 'Turkish',
+    'ru': 'Russian', 'ko': 'Korean', 'pl': 'Polish', 'sv': 'Swedish',
+    'id': 'Indonesian', 'vi': 'Vietnamese', 'bn': 'Bengali',
+    'sw': 'Swahili', 'th': 'Thai',
+}
+
+def lang_instruction(lang: str) -> str:
+    name = LANG_NAMES.get(lang, '')
+    if not name or lang == 'en':
+        return ''
+    return f'Respond in {name}. Keep proper nouns (player names, team names, countries) in their original form.\n\n'
 import urllib.request
 from dotenv import load_dotenv
 

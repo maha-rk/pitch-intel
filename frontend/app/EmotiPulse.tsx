@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Limitations from './Limitations'
+import { getLang } from './lang'
+import { useTypewriter } from './useTypewriter'
 
 interface Match {
   match_id: number
@@ -134,6 +136,7 @@ export default function EmotiPulse({ matches }: { matches: Match[] }) {
       const params = new URLSearchParams({
         home_team: selected.home_team,
         away_team: selected.away_team,
+        lang: getLang(),
       })
       const res = await fetch(`http://localhost:8001/emotipulse/${selected.match_id}?${params}`)
       if (!res.ok) throw new Error(`Server error ${res.status}`)
@@ -147,7 +150,8 @@ export default function EmotiPulse({ matches }: { matches: Match[] }) {
   }
 
   const cfg = data ? (INTENSITY_CFG[data.intensity] ?? INTENSITY_CFG.COMPETITIVE) : null
-  const paragraphs = data?.atmosphere_report.split(/\n\n+/).filter(p => p.trim()) ?? []
+  const typedReport = useTypewriter(data?.atmosphere_report)
+  const paragraphs = typedReport ? typedReport.split(/\n\n+/).filter(p => p.trim()) : []
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto' }}>

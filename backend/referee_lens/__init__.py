@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from statsbombpy import sb
 
 load_dotenv('backend/.env')
-from backend.granite import client, MODEL
+from backend.granite import client, MODEL, lang_instruction
 from backend.transparency import LIMITATIONS
 
 _matches_cache: pd.DataFrame | None = None
@@ -138,7 +138,7 @@ def get_referee_stats(referee_name: str) -> dict:
     return summary
 
 
-def analyse_referee(referee_name: str) -> dict:
+def analyse_referee(referee_name: str, lang: str = 'en') -> dict:
     stats = get_referee_stats(referee_name)
     if 'error' in stats:
         return stats
@@ -171,7 +171,7 @@ Be specific, cite real numbers from the data, under 160 words total."""
 
     report = client.chat.completions.create(
         model=MODEL,
-        messages=[{'role': 'user', 'content': prompt}],
+        messages=[{'role': 'user', 'content': lang_instruction(lang) + prompt}],
         max_tokens=250,
     ).choices[0].message.content.strip()
 
