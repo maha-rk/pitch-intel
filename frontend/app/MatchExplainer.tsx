@@ -99,12 +99,12 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
     }}>
 
       {/* ── FIXTURE LIST ── */}
-      <div style={{ background: 'var(--bg2)', borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: 'var(--bg2)', borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)' }}>Fixtures</span>
           <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--t3)' }}>{matches.length}</span>
         </div>
-        <div style={{ overflowY: 'auto', flex: 1 }}>
+        <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {matches.map(m => {
             const sel = selected?.match_id === m.match_id
             return (
@@ -136,7 +136,7 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
       </div>
 
       {/* ── MAIN PANEL ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)', minHeight: 0 }}>
 
         {!selected ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -144,7 +144,7 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--t3)' }}>Select a fixture to generate your briefing</div>
           </div>
         ) : (
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
             {/* ── SCORE HEADER ── */}
             <div style={{ position: 'relative', overflow: 'hidden', flexShrink: 0, padding: '22px 28px', background: 'var(--bg2)', borderBottom: '1px solid var(--bd)' }}>

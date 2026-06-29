@@ -2,7 +2,7 @@
 
 > Upload a football match clip. **YOLOv8** reads it frame-by-frame. **IBM Docling** extracts the exact FIFA law that applies. **IBM Granite** delivers a structured referee verdict — grounded in the actual rulebook text, not in training approximations. The evidence is shown: the law chunk, the CV readings, the confidence score.
 >
-> That is one of eight modules.
+> That is one of nine modules.
 
 **IBM SkillsBuild June Innovation Challenge 2026 · Solo submission**
 **IBM Granite · IBM Docling · YOLOv8 · StatsBomb open data · FAISS · Next.js 14**
@@ -18,7 +18,7 @@ Every other football AI system does one of three things:
 
 Pitch Intel does all three simultaneously, chained together. The VAR Oracle is the clearest example: computer vision reads the footage → Docling parses the FIFA PDF → Granite cross-references both and issues a verdict with the exact law clause visible. That is not a chatbot answering questions about football. It is a grounded inference pipeline where every layer can be inspected.
 
-The same principle runs through all 8 modules: **no Granite call runs without real StatsBomb event data in the context.** If the data pipeline fails, the AI output fails. There is no fallback to fabricated plausibility.
+The same principle runs through all 9 modules: **no Granite call runs without real StatsBomb event data in the context.** If the data pipeline fails, the AI output fails. There is no fallback to fabricated plausibility.
 
 ---
 
@@ -36,7 +36,7 @@ Football data analysis is locked behind professional platforms — Wyscout, Opta
 
 ---
 
-## The 8 Modules
+## The 9 Modules
 
 | # | Module | What it does | Key tech |
 |---|--------|-------------|----------|
@@ -47,7 +47,8 @@ Football data analysis is locked behind professional platforms — Wyscout, Opta
 | 05 | **Referee Lens** | Aggregates all 128 World Cup matches by referee. Per referee: foul symmetry index (how evenly fouls were called between both teams), home bias index, card and foul averages, match-by-match log. IBM Granite writes a 3-paragraph consistency report citing real numbers. | IBM Granite · StatsBomb |
 | 06 | **Match Explainer** | Pre- and post-match briefings grounded in real StatsBomb stats: shots, xG, possession, key moments. IBM Granite writes the narrative from actual numbers, not from training approximations. | IBM Granite · StatsBomb |
 | 07 | **EmotiPulse** | Scores match atmosphere minute-by-minute using a weighted event formula (goals ×10, shots ×2, pressures, fouls, cards). Renders a pulse SVG chart. IBM Granite writes a broadcast-style atmosphere report from the scored data. | IBM Granite · StatsBomb events |
-| 08 | **Fan Decoder** | Football AI chatbot in 16 languages (English, Spanish, French, Portuguese, Arabic, Japanese, German, Italian, Dutch, Russian, Korean, Chinese, Turkish, Polish, Swedish, Hindi). Full World Cup context in system prompt. Maintains conversation history within the session. | IBM Granite |
+| 08 | **Fan Decoder** | Football AI chatbot in 16 languages (English, Spanish, French, Portuguese, Arabic, Japanese, German, Italian, Dutch, Russian, Korean, Chinese, Turkish, Polish, Swedish, Hindi). Full World Cup context in system prompt. Maintains conversation history within the session. Voice input + spoken answers via Web Speech. | IBM Granite |
+| 09 | **Debate** | Two opposing IBM Granite personas (The Advocate vs The Skeptic) argue the same StatsBomb match data, then a neutral Granite pass delivers a consensus verdict. Grounded disagreement, not fabricated. | IBM Granite |
 
 ---
 
@@ -55,7 +56,7 @@ Football data analysis is locked behind professional platforms — Wyscout, Opta
 
 ### IBM Granite
 
-Granite is the reasoning engine for all 8 modules, served through **IBM watsonx.ai** (`ibm/granite-4-h-small`). Every module routes through a **single inference layer** ([`backend/granite.py`](backend/granite.py)) — no module instantiates its own client, so there is exactly one auditable path to the model. The same layer can serve Granite offline via **Ollama** (`granite3.3:8b`) with no code changes, switched by one environment variable.
+Granite is the reasoning engine for all 9 modules, served through **IBM watsonx.ai** (`ibm/granite-4-h-small`). Every module routes through a **single inference layer** ([`backend/granite.py`](backend/granite.py)) — no module instantiates its own client, so there is exactly one auditable path to the model. The same layer can serve Granite offline via **Ollama** (`granite3.3:8b`) with no code changes, switched by one environment variable.
 
 Every AI output is grounded in real StatsBomb event data passed as context — Granite never runs without real numbers in the prompt. This is not a wrapper around a general chatbot; it is a grounded inference system where the quality of the output is directly tied to the quality of the data pipeline feeding it.
 

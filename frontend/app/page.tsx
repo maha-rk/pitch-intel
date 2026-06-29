@@ -275,11 +275,11 @@ export default function Home() {
         .content { padding:18px 22px; }
 
         .tac { display:grid; grid-template-columns:260px 1fr; gap:14px; height:calc(100vh - 148px); }
-        .fpanel { background:var(--bg2); border-radius:6px; overflow:hidden; display:flex; flex-direction:column; border:1px solid var(--bd); }
+        .fpanel { background:var(--bg2); border-radius:6px; overflow:hidden; display:flex; flex-direction:column; border:1px solid var(--bd); min-height:0; }
         .phd { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--bd); background:var(--bg3); flex-shrink:0; }
         .pttl { font-size:9px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; color:var(--t2); }
         .pct { font-size:9px; font-weight:700; color:var(--green); background:var(--g-chip); border:1px solid var(--g-border); padding:1px 7px; border-radius:2px; }
-        .flist { overflow-y:auto; flex:1; }
+        .flist { overflow-y:auto; flex:1; min-height:0; }
         .flist::-webkit-scrollbar { width:2px; }
         .flist::-webkit-scrollbar-thumb { background:var(--bg5); }
         .frow { display:flex; align-items:center; justify-content:space-between; padding:9px 14px; border-bottom:1px solid var(--bd); border-left:2px solid transparent; cursor:pointer; transition:background 0.12s,transform 0.12s; gap:10px; }
@@ -293,7 +293,7 @@ export default function Home() {
         .farr { color:var(--t3); font-size:10px; flex-shrink:0; }
         .frow.sel .farr { color:var(--green); }
 
-        .mv { display:flex; flex-direction:column; gap:16px; overflow-y:auto; height:100%; }
+        .mv { display:flex; flex-direction:column; gap:16px; overflow-y:auto; height:100%; min-height:0; }
         .mv::-webkit-scrollbar { width:3px; }
         .mv::-webkit-scrollbar-thumb { background:var(--bg5); }
 
@@ -568,11 +568,11 @@ export default function Home() {
           <div className="lp-hero">
             <div className="lp-eyebrow"><div className="lp-eyebrow-dot"/>FIFA World Cup · AI Command Center</div>
             <h1 className="lp-title">PITCH<br/><span className="lp-title-accent">INTEL</span></h1>
-            <p className="lp-sub">Upload a match clip — YOLOv8 reads it, IBM Docling pulls the exact FIFA law, IBM Granite delivers the verdict. That&apos;s one of eight modules.</p>
+            <p className="lp-sub">Upload a match clip — YOLOv8 reads it, IBM Docling pulls the exact FIFA law, IBM Granite delivers the verdict. That&apos;s one of nine modules.</p>
             <div className="lp-diff">
               {([
                 {n:'128', l1:'WC Matches', l2:'2018 + 2022 · StatsBomb', c:'#00D46A'},
-                {n:'3',   l1:'IBM Tech Stack', l2:'Granite · Docling · YOLOv8', c:'#F97316'},
+                {n:'4',   l1:'IBM Tech Stack', l2:'Granite · watsonx · Docling · MCP', c:'#F97316'},
                 {n:'6K+', l1:'Players Indexed', l2:'FAISS semantic search', c:'#06B6D4'},
                 {n:'9',   l1:'Languages', l2:'Fan Decoder chatbot', c:'#EC4899'},
               ] as {n:string;l1:string;l2:string;c:string}[]).map(({n,l1,l2,c})=>(
@@ -588,17 +588,18 @@ export default function Home() {
           </div>
 
           {/* Module grid */}
-          <div className="lp-section-lbl">8 Working Modules · IBM Granite Powers All</div>
+          <div className="lp-section-lbl">9 Working Modules · IBM Granite Powers All</div>
           <div className="lp-grid">
             {([
               {name:'VAR Oracle',     desc:'YOLOv8 reads footage frame-by-frame · IBM Docling extracts the exact FIFA law clause · IBM Granite delivers a verdict with the law text visible',tag:'YOLOv8 · Docling · Granite', c:'#F97316'},
               {name:'TacticalLens',   desc:'xG flow, shot maps, pass networks, auto-detected formations, penalty analysis, and match verdict from StatsBomb event data', tag:'StatsBomb Events',   c:'#3B7CF6'},
-              {name:'Pitch Agent',    desc:'IBM Granite agent with 6 real StatsBomb tools — full reasoning chain visible, What-If counterfactuals grounded in real data', tag:'Tool Use · Agentic', c:'#00D46A'},
+              {name:'Pitch Agent',    desc:'IBM Granite agent with 6 real StatsBomb tools (also exposed over MCP) — full reasoning chain visible, What-If counterfactuals grounded in real data', tag:'Tool Use · MCP', c:'#00D46A'},
               {name:'Scout Eye',      desc:'Natural-language search across 6,000+ WC players — FAISS embeddings, AI scouting reports',    tag:'FAISS · Semantic',   c:'#06B6D4'},
               {name:'Referee Lens',   desc:'Foul symmetry index + home bias metric across all 128 matches — AI consistency verdict per referee', tag:'128 Match Analysis', c:'#F59E0B'},
               {name:'Match Explainer',desc:'Pre/post briefings grounded in real StatsBomb stats — Beginner, Fan, and Coach modes',        tag:'3 Audience Modes',   c:'#8B5CF6'},
               {name:'EmotiPulse',     desc:'Per-minute atmosphere scoring via event formula with pulse SVG + broadcast AI report',         tag:'Minute-by-Minute',   c:'#EF4444'},
-              {name:'Fan Decoder',    desc:'Football AI chatbot in 9 languages with full World Cup context and conversation history',      tag:'9 Languages',        c:'#EC4899'},
+              {name:'Fan Decoder',    desc:'Football AI chatbot in 9 languages with full World Cup context and conversation history — voice in, audio out',      tag:'9 Languages · Voice',        c:'#EC4899'},
+              {name:'Debate',         desc:'Two opposing IBM Granite agents argue the same match data — Advocate vs Skeptic — then a neutral Granite consensus verdict', tag:'Multi-Agent',        c:'#2DD4BF'},
             ] as {name:string;desc:string;tag:string;c:string}[]).map((m,i)=>(
               <div key={m.name} className="lp-card" style={{borderLeftColor:m.c}}>
                 <div className="lp-card-top">
@@ -619,7 +620,7 @@ export default function Home() {
 
           {/* Footer */}
           <div className="lp-footer">
-            IBM Granite · IBM Docling · StatsBomb Open Data · YOLOv8 (Ultralytics) · FAISS (Meta AI) · sentence-transformers<br/>
+            IBM Granite (watsonx.ai) · IBM Docling · IBM Context Forge (MCP) · StatsBomb Open Data · YOLOv8 (Ultralytics) · FAISS (Meta AI) · sentence-transformers<br/>
             IBM SkillsBuild June Innovation Challenge 2026
           </div>
         </div>

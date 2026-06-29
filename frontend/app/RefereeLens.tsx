@@ -88,7 +88,7 @@ export default function RefereeLens() {
     <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 14, height: 'calc(100vh - 150px)' }}>
 
       {/* ── Referee list panel ── */}
-      <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ padding: '9px 12px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)', flexShrink: 0 }}>
           <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: 6 }}>
             Referees · {referees.length}
@@ -104,7 +104,7 @@ export default function RefereeLens() {
             }}
           />
         </div>
-        <div style={{ overflowY: 'auto', flex: 1 }}>
+        <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {listLoading ? (
             <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: 'var(--t3)' }}>Loading referees…</div>
           ) : filtered.map(ref => (
@@ -129,7 +129,7 @@ export default function RefereeLens() {
       </div>
 
       {/* ── Detail panel ── */}
-      <div style={{ overflowY: 'auto' }}>
+      <div style={{ overflowY: 'auto', minHeight: 0 }}>
         {!selected && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8 }}>
             <div style={{ fontSize: 44, opacity: 0.08 }}>🏁</div>

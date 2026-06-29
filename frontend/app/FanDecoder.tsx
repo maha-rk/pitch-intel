@@ -97,7 +97,7 @@ export default function FanDecoder() {
       <div style={{
         width: 280, flexShrink: 0,
         background: 'var(--bg2)', borderRight: '1px solid var(--bd)',
-        display: 'flex', flexDirection: 'column',
+        display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
         {/* Header */}
         <div style={{
@@ -168,7 +168,7 @@ export default function FanDecoder() {
         </div>
 
         {/* Topic cards */}
-        <div style={{ padding: '12px 16px', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '12px 16px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
           <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t3)', marginBottom: 10 }}>Quick Topics</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {TOPICS.map(t => (
@@ -208,7 +208,7 @@ export default function FanDecoder() {
       </div>
 
       {/* RIGHT — broadcast main screen */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
 
         {/* Broadcast header bar */}
         <div style={{
@@ -230,7 +230,7 @@ export default function FanDecoder() {
         </div>
 
         {/* Chat area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0 }}>
 
           {/* Welcome graphic */}
           {history.length === 0 && !loading && (
