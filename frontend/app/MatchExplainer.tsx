@@ -1,6 +1,7 @@
 'use client'
+import API_URL from './api-url'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Limitations from './Limitations'
 import { SpeakButton } from './voice'
 import { exportReport } from './pdf'
@@ -32,16 +33,16 @@ interface BriefingResult {
 }
 
 const TEAM_COLORS: Record<string, string> = {
-  'Brazil': '#F59E0B', 'Belgium': '#EF4444', 'France': '#3B82F6',
-  'Croatia': '#F97316', 'England': '#E2E8F0', 'Argentina': '#60A5FA',
-  'Germany': '#38BDF8', 'Spain': '#F87171', 'Portugal': '#4ADE80',
-  'Morocco': '#FBBF24', 'Canada': '#EF4444', 'Netherlands': '#F97316',
-  'Uruguay': '#60A5FA', 'Japan': '#3B82F6', 'Senegal': '#A78BFA',
-  'United States': '#60A5FA', 'Australia': '#FBBF24', 'Switzerland': '#F87171',
-  'Poland': '#E2E8F0', 'South Korea': '#EF4444', 'Tunisia': '#F59E0B',
-  'Cameroon': '#4ADE80', 'Ghana': '#F59E0B', 'Ecuador': '#F59E0B',
-  'Qatar': '#8B5CF6', 'Iran': '#4ADE80', 'Saudi Arabia': '#4ADE80',
-  'Wales': '#EF4444', 'Denmark': '#EF4444',
+  'Brazil': '#D97706', 'Belgium': '#DC2626', 'France': '#1D4ED8',
+  'Croatia': '#EA580C', 'England': '#1E3A8A', 'Argentina': '#2563EB',
+  'Germany': '#0284C7', 'Spain': '#DC2626', 'Portugal': '#16A34A',
+  'Morocco': '#D97706', 'Canada': '#DC2626', 'Netherlands': '#EA580C',
+  'Uruguay': '#2563EB', 'Japan': '#1D4ED8', 'Senegal': '#7C3AED',
+  'United States': '#2563EB', 'Australia': '#D97706', 'Switzerland': '#DC2626',
+  'Poland': '#DC2626', 'South Korea': '#DC2626', 'Tunisia': '#D97706',
+  'Cameroon': '#16A34A', 'Ghana': '#D97706', 'Ecuador': '#D97706',
+  'Qatar': '#7C3AED', 'Iran': '#16A34A', 'Saudi Arabia': '#16A34A',
+  'Wales': '#DC2626', 'Denmark': '#DC2626',
 }
 
 const PRE_SECTIONS = ['Tactical Preview', 'Key Advantage', 'Decisive Factor']
@@ -75,11 +76,17 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
         briefing_type: briefingType,
         lang: getLang(),
       })
-      const res = await fetch(`http://localhost:8001/explainer/${selected.match_id}?${params}`)
+      const res = await fetch(`${API_URL}/explainer/${selected.match_id}?${params}`)
       setResult(await res.json())
     } catch(e) {}
     setLoading(false)
   }
+
+  useEffect(() => {
+    const handler = () => { if (selected && result) generate() }
+    window.addEventListener('lang-change', handler)
+    return () => window.removeEventListener('lang-change', handler)
+  }, [selected, briefingType, result])
 
   const hc = selected ? tc(selected.home_team, '#10B981') : '#10B981'
   const ac = selected ? tc(selected.away_team, '#F97316') : '#F97316'
@@ -101,6 +108,12 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
       height: 'calc(100vh - 150px)',
       border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden',
     }}>
+    <style>{`
+      @keyframes clipbob {
+        0%   { transform: translateY(-7px) rotate(-2deg); }
+        100% { transform: translateY(7px)  rotate(2deg);  }
+      }
+    `}</style>
 
       {/* ── FIXTURE LIST ── */}
       <div style={{ background: 'var(--bg2)', borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -132,7 +145,7 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
                     <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--t2)', flexShrink: 0 }}>{m.home_score}–{m.away_score}</span>
                   )}
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--t3)', marginTop: 2 }}>{m.match_date}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', marginTop: 2, letterSpacing: '0.02em' }}>{m.match_date}</div>
               </div>
             )
           })}
@@ -140,12 +153,27 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
       </div>
 
       {/* ── MAIN PANEL ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)', minHeight: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent', minHeight: 0 }}>
 
         {!selected ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, letterSpacing: '0.1em', color: 'var(--bg5)', lineHeight: 1 }}>Match Explainer</div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--t3)' }}>Select a fixture to generate your briefing</div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0, position: 'relative', overflow: 'hidden' }}>
+            <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none' }} viewBox="0 0 600 500" preserveAspectRatio="xMidYMid slice" fill="none">
+              <rect x="160" y="60" width="280" height="380" rx="10" stroke="#8B5CF6" strokeWidth="4" opacity="0.14"/>
+              <rect x="220" y="44" width="160" height="36" rx="8" stroke="#8B5CF6" strokeWidth="3" opacity="0.17"/>
+              <line x1="200" y1="150" x2="400" y2="150" stroke="#8B5CF6" strokeWidth="5" strokeLinecap="round" opacity="0.15"/>
+              <line x1="200" y1="195" x2="400" y2="195" stroke="#8B5CF6" strokeWidth="5" strokeLinecap="round" opacity="0.14"/>
+              <line x1="200" y1="240" x2="370" y2="240" stroke="#8B5CF6" strokeWidth="5" strokeLinecap="round" opacity="0.12"/>
+              <line x1="200" y1="285" x2="400" y2="285" stroke="#8B5CF6" strokeWidth="5" strokeLinecap="round" opacity="0.14"/>
+              <line x1="200" y1="330" x2="350" y2="330" stroke="#8B5CF6" strokeWidth="5" strokeLinecap="round" opacity="0.12"/>
+              <circle cx="185" cy="150" r="6" fill="#8B5CF6" opacity="0.17"/>
+              <circle cx="185" cy="195" r="6" fill="#8B5CF6" opacity="0.17"/>
+              <circle cx="185" cy="240" r="6" fill="#8B5CF6" opacity="0.17"/>
+            </svg>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#8B5CF6', opacity: 0.8 }}>MODULE 06 · AI BRIEFINGS</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 76, letterSpacing: '0.05em', lineHeight: 0.88, color: 'var(--t1)', textAlign: 'center', marginTop: 10 }}>MATCH</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 76, letterSpacing: '0.12em', lineHeight: 0.88, color: '#8B5CF6', textAlign: 'center', borderBottom: '3px solid #8B5CF6', paddingBottom: 6, marginBottom: 4 }}>EXPLAINER</div>
+            <div style={{ fontSize: 52, opacity: 0.75, margin: '20px 0 14px', display: 'inline-block', animation: 'clipbob 2s ease-in-out infinite alternate' }}>📋</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--t3)', marginTop: 14 }}>Select a fixture to generate your briefing</div>
           </div>
         ) : (
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -175,7 +203,7 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
             </div>
 
             {/* ── CONTROLS ── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderBottom: '1px solid var(--bd)', flexShrink: 0, background: 'var(--bg2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0, padding: '10px 20px', borderBottom: '1px solid var(--bd)', flexShrink: 0, background: 'var(--bg2)' }}>
               <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--bd)', borderRadius: 4, overflow: 'hidden' }}>
                 {(['pre', 'post'] as const).map(t => (
                   <button key={t} onClick={() => setBriefingType(t)} style={{
@@ -187,6 +215,13 @@ export default function MatchExplainer({ matches }: { matches: Match[] }) {
                     {t === 'pre' ? 'Pre-Match' : 'Post-Match'}
                   </button>
                 ))}
+              </div>
+              {/* connector arrow → */}
+              <div style={{ display: 'flex', alignItems: 'center', margin: '0 6px 0 10px', color: 'var(--green)', opacity: 0.7 }}>
+                <div style={{ width: 28, height: 1.5, background: 'var(--green)', opacity: 0.6 }} />
+                <svg width="7" height="10" viewBox="0 0 7 10" style={{ marginLeft: -1 }}>
+                  <path d="M0 0 L7 5 L0 10" fill="none" stroke="var(--green)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
               <button onClick={generate} disabled={loading} style={{
                 padding: '7px 22px', background: loading ? 'var(--bg4)' : 'var(--green)',

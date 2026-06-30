@@ -149,7 +149,7 @@ def analyse_referee(referee_name: str, lang: str = 'en') -> dict:
         for m in stats['matches']
     )
 
-    prompt = f"""You are a football referee analyst assessing consistency for the IBM SkillsBuild World Cup AI Challenge.
+    prompt = f"""You are a football referee analyst assessing consistency across World Cup matches.
 
 REFEREE: {referee_name}
 MATCHES OFFICIATED: {stats['matches_officiated']}

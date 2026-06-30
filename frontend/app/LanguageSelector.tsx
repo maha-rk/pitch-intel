@@ -38,8 +38,8 @@ export default function LanguageSelector() {
         }}
       >
         <span style={{ fontSize: 16 }}>{selected.flag}</span>
-        <span>{selected.label}</span>
-        <span style={{ fontSize: 9, color: 'var(--t3)', marginLeft: 2 }}>▼</span>
+        <span style={{ fontSize: 10, fontWeight: 700 }}>{selected.code.toUpperCase()}</span>
+        <span style={{ fontSize: 9, color: 'var(--t3)' }}>▼</span>
       </button>
 
       {open && (

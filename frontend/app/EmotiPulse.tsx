@@ -1,6 +1,7 @@
 'use client'
+import API_URL from './api-url'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Limitations from './Limitations'
 import { getLang } from './lang'
 import { useTypewriter } from './useTypewriter'
@@ -129,6 +130,12 @@ export default function EmotiPulse({ matches }: { matches: Match[] }) {
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
 
+  useEffect(() => {
+    const handler = () => { if (selected && data) scan() }
+    window.addEventListener('lang-change', handler)
+    return () => window.removeEventListener('lang-change', handler)
+  }, [selected, data])
+
   const scan = async () => {
     if (!selected) return
     setLoading(true); setData(null); setError(null)
@@ -138,7 +145,7 @@ export default function EmotiPulse({ matches }: { matches: Match[] }) {
         away_team: selected.away_team,
         lang: getLang(),
       })
-      const res = await fetch(`http://localhost:8001/emotipulse/${selected.match_id}?${params}`)
+      const res = await fetch(`${API_URL}/emotipulse/${selected.match_id}?${params}`)
       if (!res.ok) throw new Error(`Server error ${res.status}`)
       const json: EmotiData = await res.json()
       setData(json)
@@ -154,26 +161,34 @@ export default function EmotiPulse({ matches }: { matches: Match[] }) {
   const paragraphs = typedReport ? typedReport.split(/\n\n+/).filter(p => p.trim()) : []
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+    <div>
 
-      {/* ── Header ── */}
-      <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: 5 }}>
-          Module 05 · Match Atmosphere Intelligence
-        </div>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, letterSpacing: '0.06em', color: 'var(--t1)', lineHeight: 1 }}>EmotiPulse</div>
-        <div style={{ fontSize: 13, color: 'var(--t2)', marginTop: 7, lineHeight: 1.6, maxWidth: 640 }}>
-          Select a match. <strong style={{ color: 'var(--t1)' }}>StatsBomb</strong> event data is scored by emotional weight —
-          goals, cards, near-misses — and rendered as a live <strong style={{ color: 'var(--t1)' }}>match pulse</strong>.
-          AI delivers a broadcast-grade atmosphere report.
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          {['StatsBomb Events', 'Emotion Scoring', 'Pulse Visualisation', 'AI Atmosphere Report'].map(tag => (
-            <span key={tag} style={{ padding: '3px 10px', background: 'var(--bg3)', border: '1px solid var(--bd)', borderRadius: 3, fontSize: 10, fontWeight: 700, color: 'var(--t3)', letterSpacing: '0.06em' }}>{tag}</span>
-          ))}
+      {/* ── Dark hero panel — full bleed ── */}
+      <div style={{ position: 'relative', background: 'linear-gradient(135deg,#1A0404 0%,#2D0808 55%,#1A0404 100%)', borderRadius: 0, padding: '40px 48px 36px', marginBottom: 24, overflow: 'hidden', borderBottom: '1px solid rgba(239,68,68,0.18)', marginTop: -18, marginLeft: -22, marginRight: -22 }}>
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.09 }} viewBox="0 0 860 260" preserveAspectRatio="xMidYMid slice">
+          {/* Heartbeat / pulse line */}
+          <polyline points="60,130 160,130 200,130 220,50 240,200 260,130 300,130 340,130 370,80 390,170 410,130 500,130 530,130 555,40 575,210 595,130 640,130 800,130" fill="none" stroke="#EF4444" strokeWidth="1.5" strokeLinejoin="round"/>
+          <line x1="60" y1="130" x2="800" y2="130" stroke="#EF4444" strokeWidth="0.4" strokeDasharray="4,10"/>
+        </svg>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.28em', textTransform: 'uppercase', color: '#EF4444' }}>MODULE 07 · MATCH ATMOSPHERE INTELLIGENCE</span>
+            <div style={{ display: 'flex', gap: 5 }}>
+              {(['StatsBomb Events', 'Emotion Scoring', 'IBM Granite'] as const).map(tag => (
+                <span key={tag} style={{ padding: '2px 9px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.28)', borderRadius: 3, fontSize: 9, fontWeight: 700, color: '#EF4444', letterSpacing: '0.06em' }}>{tag}</span>
+              ))}
+            </div>
+          </div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.05em', lineHeight: 0.88, borderBottom: '3px solid #EF4444', paddingBottom: 6, display: 'inline-block' }}>
+            <span style={{ fontSize: 80, color: '#FFFFFF' }}>EMOTI</span><span style={{ fontSize: 80, color: '#EF4444' }}>PULSE</span>
+          </div>
+          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.65)', marginTop: 18, lineHeight: 1.65, maxWidth: 820, fontWeight: 400 }}>
+            StatsBomb event data scored by emotional weight — goals, cards, near-misses — rendered as a live match pulse. IBM Granite delivers a broadcast-grade atmosphere report.
+          </div>
         </div>
       </div>
 
+      <div style={{ maxWidth: 1000, margin: '0 auto' }}>
       {/* ── Match selector ── */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1 }}>
@@ -360,6 +375,7 @@ export default function EmotiPulse({ matches }: { matches: Match[] }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

@@ -71,15 +71,23 @@ Respond with ONLY a JSON array, no prose before or after:
 
     beats: list[dict] = []
     try:
-        start, end = raw.find('['), raw.rfind(']') + 1
-        parsed = json.loads(raw[start:end])
+        # Strip markdown code fences if present
+        clean = raw.strip().removeprefix('```json').removeprefix('```').removesuffix('```').strip()
+        start, end = clean.find('['), clean.rfind(']') + 1
+        parsed = json.loads(clean[start:end])
         for b in parsed:
-            if isinstance(b, dict) and b.get('text'):
-                beats.append({'minute': b.get('minute'), 'text': str(b['text']).strip()})
+            if not isinstance(b, dict):
+                continue
+            text = str(b.get('text', '')).strip()
+            # Skip beats where the model accidentally put raw JSON as the text
+            if not text or text.startswith('[') or text.startswith('{'):
+                continue
+            beats.append({'minute': b.get('minute'), 'text': text})
     except Exception:
         # Fallback: split the raw narration into sentence-ish beats
         for chunk in [c.strip() for c in raw.replace('\n', ' ').split('. ') if c.strip()]:
-            beats.append({'minute': None, 'text': chunk.rstrip('.') + '.'})
+            if not chunk.startswith('[') and not chunk.startswith('{'):
+                beats.append({'minute': None, 'text': chunk.rstrip('.') + '.'})
 
     if not beats:
         beats = [{'minute': None, 'text': f'{home_team} played {away_team}. The match finished {h} to {a}.'}]

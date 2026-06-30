@@ -15,34 +15,34 @@ export default function Limitations({ items }: { items?: string[] }) {
         border: '1px solid var(--bd2)',
         borderLeft: '3px solid var(--gold)',
         borderRadius: 8,
-        padding: '14px 16px',
+        padding: '10px 12px',
       }}
     >
       <div
         style={{
-          fontSize: 11,
-          fontWeight: 700,
+          fontSize: 10,
+          fontWeight: 800,
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
           color: 'var(--gold)',
-          marginBottom: 10,
+          marginBottom: 8,
           display: 'flex',
           alignItems: 'center',
-          gap: 7,
+          gap: 6,
         }}
       >
-        <span aria-hidden>⚠</span> What this can&apos;t tell you
+        <span aria-hidden style={{ fontSize: 10 }}>⚠</span> What this can&apos;t tell you
       </div>
-      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {items.map((t, i) => (
           <li
             key={i}
             style={{
-              fontSize: 13,
+              fontSize: 11,
               lineHeight: 1.5,
               color: 'var(--t2)',
               display: 'flex',
-              gap: 9,
+              gap: 7,
             }}
           >
             <span style={{ color: 'var(--gold)', flexShrink: 0 }}>—</span>

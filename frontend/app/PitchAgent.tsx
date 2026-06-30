@@ -1,8 +1,10 @@
 'use client'
+import API_URL from './api-url'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MicButton } from './voice'
 import { getLang } from './lang'
+import Limitations from './Limitations'
 
 interface Match {
   match_id: number
@@ -23,6 +25,7 @@ interface AgentMessage {
   role: 'user' | 'agent'
   content: string
   tool_calls?: ToolCall[]
+  limitations?: string[]
   loading?: boolean
 }
 
@@ -35,15 +38,15 @@ const TOOL_META: Record<string, { label: string; icon: string; color: string; de
   search_players:  { label: 'Player Search',     icon: '🔍', color: '#F97316', desc: 'Semantic search across 6000+ players by role, style, or stat profile' },
 }
 
-const SUGGESTIONS = [
-  'Why did momentum shift in this match?',
-  'Which team created better chances and why?',
-  'Who were the key playmakers in the passing network?',
-  'What were the biggest turning points?',
-  'How intense was this match emotionally?',
-  'Find me a clinical striker with high xG under pressure',
-  'What if the red card hadn\'t happened — how would momentum have shifted?',
-  'What if the match went to extra time — which team had more left in the tank?',
+const SUGGESTIONS: { text: string; icon: string; color: string }[] = [
+  { text: 'Why did momentum shift in this match?',                                          icon: '📈', color: '#3B7CF6' },
+  { text: 'Which team created better chances and why?',                                     icon: '⚽', color: '#10B981' },
+  { text: 'Who were the key playmakers in the passing network?',                            icon: '🔗', color: '#8B5CF6' },
+  { text: 'What were the biggest turning points?',                                          icon: '⚡', color: '#F59E0B' },
+  { text: 'How intense was this match emotionally?',                                        icon: '🌡', color: '#EF4444' },
+  { text: 'Find me a clinical striker with high xG under pressure',                        icon: '🔍', color: '#F97316' },
+  { text: "What if the red card hadn't happened — how would momentum have shifted?",        icon: '🔮', color: '#A855F7' },
+  { text: 'What if the match went to extra time — which team had more left in the tank?',  icon: '🔮', color: '#A855F7' },
 ]
 
 function ToolCallBadge({ tc }: { tc: ToolCall }) {
@@ -178,6 +181,12 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
   const [matchOpen, setMatchOpen] = useState(false)
   const [toolRegistryOpen, setToolRegistryOpen] = useState(false)
 
+  useEffect(() => {
+    const handler = () => setMessages([])
+    window.addEventListener('lang-change', handler)
+    return () => window.removeEventListener('lang-change', handler)
+  }, [])
+
   const ask = async (q: string) => {
     const question = q.trim()
     if (!question || loading) return
@@ -200,7 +209,7 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
         }
       }
 
-      const res = await fetch('http://localhost:8001/agent/query', {
+      const res = await fetch(`${API_URL}/agent/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -213,6 +222,7 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
           role: 'agent',
           content: data.answer || data.error || 'No response.',
           tool_calls: data.tool_calls || [],
+          limitations: data.limitations || [],
         }
       ])
     } catch {
@@ -226,62 +236,80 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
   }
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto' }}>
+    <div>
 
-      {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--green)' }}>
-            Module 07 · Agentic AI
+      {/* ── Dark hero panel — full bleed ── */}
+      <div style={{ position:'relative', background:'linear-gradient(135deg,#050F08 0%,#0A1C10 55%,#050F08 100%)', borderRadius:0, padding:'40px 48px 36px', marginBottom:24, overflow:'hidden', border:'none', borderBottom:'1px solid rgba(0,212,106,0.18)', marginTop:-18, marginLeft:-22, marginRight:-22 }}>
+        {/* Pitch SVG decoration */}
+        <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', opacity:0.07 }} viewBox="0 0 860 260" preserveAspectRatio="xMidYMid slice">
+          <rect x="60" y="20" width="740" height="220" fill="none" stroke="#00D46A" strokeWidth="1.5"/>
+          <line x1="430" y1="20" x2="430" y2="240" stroke="#00D46A" strokeWidth="1.2"/>
+          <circle cx="430" cy="130" r="55" fill="none" stroke="#00D46A" strokeWidth="1.2"/>
+          <circle cx="430" cy="130" r="3" fill="#00D46A"/>
+          <rect x="60" y="75" width="100" height="110" fill="none" stroke="#00D46A" strokeWidth="1"/>
+          <rect x="700" y="75" width="100" height="110" fill="none" stroke="#00D46A" strokeWidth="1"/>
+          <rect x="60" y="100" width="40" height="60" fill="none" stroke="#00D46A" strokeWidth="0.8"/>
+          <rect x="760" y="100" width="40" height="60" fill="none" stroke="#00D46A" strokeWidth="0.8"/>
+        </svg>
+
+        <div style={{ position:'relative', zIndex:1 }}>
+          {/* Eyebrow */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <span style={{ fontSize:10, fontWeight:800, letterSpacing:'0.28em', textTransform:'uppercase', color:'#00D46A' }}>MODULE 03 · AGENTIC AI</span>
+            <div style={{ display:'flex', gap:5 }}>
+              {['IBM Granite', 'Tool Use', 'StatsBomb'].map(tag => (
+                <span key={tag} style={{ padding:'2px 9px', background:'rgba(0,212,106,0.12)', border:'1px solid rgba(0,212,106,0.28)', borderRadius:3, fontSize:9, fontWeight:700, color:'#00D46A', letterSpacing:'0.06em' }}>{tag}</span>
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {['IBM Granite', 'Tool Use', 'StatsBomb'].map(tag => (
-              <span key={tag} style={{
-                padding: '2px 8px', background: '#0E2A1C',
-                border: '1px solid #1A5535', borderRadius: 3,
-                fontSize: 9, fontWeight: 700, color: 'var(--green)', letterSpacing: '0.06em'
-              }}>{tag}</span>
-            ))}
+
+          {/* Title */}
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.05em', lineHeight:0.88, borderBottom:'3px solid #00D46A', paddingBottom:6, display:'inline-block' }}>
+            <span style={{ fontSize:80, color:'#FFFFFF' }}>PITCH </span><span style={{ fontSize:80, color:'#00D46A' }}>AGENT</span>
           </div>
-        </div>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, letterSpacing: '0.06em', color: 'var(--t1)', lineHeight: 1 }}>
-          Pitch Agent
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--t2)', marginTop: 7, lineHeight: 1.6, maxWidth: 620 }}>
-          Ask any question about World Cup matches. IBM Granite reasons over real StatsBomb data —
-          momentum flows, xG models, passing networks, player stats — and shows you exactly which data it used.
+
+          {/* Description */}
+          <div style={{ fontSize:15, color:'rgba(255,255,255,0.65)', marginTop:18, lineHeight:1.65, maxWidth:820, fontWeight:400 }}>
+            Ask any question about World Cup matches. IBM Granite reasons over real StatsBomb data — momentum flows, xG models, passing networks, player stats — and shows exactly which data it used.
+          </div>
         </div>
       </div>
 
+      <div style={{ maxWidth:860, margin:'0 auto' }}>{/* content-wrap */}
+
       {/* Tool Registry Panel */}
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 20 }}>
         <button
           onClick={() => setToolRegistryOpen(o => !o)}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-            background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: toolRegistryOpen ? '6px 6px 0 0' : 6,
-            padding: '8px 14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+            display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+            background: '#0A1A10', border: '1px solid rgba(0,212,106,0.25)',
+            borderRadius: toolRegistryOpen ? '6px 6px 0 0' : 6,
+            padding: '10px 16px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
           }}
         >
-          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--green)' }}>Tool Registry</span>
-          <span style={{ fontSize: 10, color: 'var(--t3)' }}>· {Object.keys(TOOL_META).length} IBM Granite tools available</span>
-          <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--t3)' }}>{toolRegistryOpen ? '▲' : '▼'}</span>
+          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#00D46A' }}>Tool Registry</span>
+          <span style={{ fontSize: 11, color: 'rgba(0,212,106,0.55)', fontWeight: 500 }}>· {Object.keys(TOOL_META).length} IBM Granite tools available</span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(0,212,106,0.5)' }}>{toolRegistryOpen ? '▲' : '▼'}</span>
         </button>
         {toolRegistryOpen && (
-          <div style={{ border: '1px solid var(--bd)', borderTop: 'none', borderRadius: '0 0 6px 6px', background: 'var(--bg)', overflow: 'hidden' }}>
+          <div style={{ border: '1px solid rgba(0,212,106,0.2)', borderTop: 'none', borderRadius: '0 0 6px 6px', background: '#060F09', overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
               {Object.entries(TOOL_META).map(([key, meta], i) => (
                 <div key={key} style={{
-                  padding: '12px 14px',
-                  borderRight: i % 3 !== 2 ? '1px solid var(--bd)' : 'none',
-                  borderBottom: i < Object.keys(TOOL_META).length - 3 ? '1px solid var(--bd)' : 'none',
+                  padding: '16px 18px',
+                  borderLeft: `3px solid ${meta.color}`,
+                  borderRight: i % 3 !== 2 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                  borderBottom: i < Object.keys(TOOL_META).length - 3 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                  background: `${meta.color}08`,
+                  transition: 'background 0.15s',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-                    <span style={{ fontSize: 14 }}>{meta.icon}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: meta.color }}>{meta.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                    <span style={{ fontSize: 16 }}>{meta.icon}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: meta.color, letterSpacing: '0.04em' }}>{meta.label}</span>
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--t3)', lineHeight: 1.55 }}>{meta.desc}</div>
-                  <div style={{ marginTop: 5, fontSize: 9, fontFamily: 'monospace', color: 'var(--t3)', opacity: 0.6 }}>{key}()</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.65 }}>{meta.desc}</div>
+                  <div style={{ marginTop: 8, display: 'inline-block', fontSize: 10, fontFamily: 'monospace', color: meta.color, opacity: 0.7, background: `${meta.color}14`, padding: '3px 8px', borderRadius: 3 }}>{key}()</div>
                 </div>
               ))}
             </div>
@@ -290,19 +318,21 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
       </div>
 
       {/* Match context selector */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t3)', marginBottom: 5 }}>
-          Match Context (optional — narrows agent to a specific fixture)
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--t1)', marginBottom: 8 }}>
+          Match Context <span style={{ fontWeight: 500, color: 'var(--t2)', fontSize: 13, letterSpacing: '0.02em', textTransform: 'none' }}>— optional, narrows agent to one fixture</span>
         </div>
-        <div style={{ position: 'relative', maxWidth: 480 }}>
+        <div style={{ position: 'relative', maxWidth: 520 }}>
           <div
             onClick={() => setMatchOpen(o => !o)}
             style={{
-              background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 6,
-              padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: 'var(--bg2)', border: '1px solid var(--bd2)', borderRadius: 6,
+              borderLeft: `3px solid ${selectedMatch ? 'var(--green)' : 'var(--bd2)'}`,
+              padding: '11px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              transition: 'border-color 0.15s',
             }}
           >
-            <span style={{ fontSize: 12, color: selectedMatch ? 'var(--t1)' : 'var(--t3)' }}>
+            <span style={{ fontSize: 13, fontWeight: selectedMatch ? 700 : 400, color: selectedMatch ? 'var(--t1)' : 'var(--t3)' }}>
               {selectedMatch
                 ? `${selectedMatch.home_team} vs ${selectedMatch.away_team} — ${selectedMatch.match_date}`
                 : 'No match selected — agent uses all 128 matches'}
@@ -346,24 +376,29 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
 
       {/* Suggested questions */}
       {messages.length === 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t3)', marginBottom: 8 }}>
+        <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--t1)', marginBottom: 12 }}>
             Try asking
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {SUGGESTIONS.map(s => (
               <button
-                key={s}
-                onClick={() => ask(s)}
+                key={s.text}
+                onClick={() => ask(s.text)}
                 style={{
-                  padding: '6px 12px', background: 'var(--bg2)', border: '1px solid var(--bd)',
-                  borderRadius: 6, fontSize: 12, color: 'var(--t2)', cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif', transition: 'all 0.12s', textAlign: 'left',
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '8px 14px',
+                  background: `${s.color}0D`,
+                  border: `1px solid ${s.color}35`,
+                  borderLeft: `3px solid ${s.color}`,
+                  borderRadius: 5, fontSize: 12, color: 'var(--t1)', cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif', transition: 'all 0.14s', textAlign: 'left',
+                  fontWeight: 500,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--green)'; e.currentTarget.style.color = 'var(--t1)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--bd)'; e.currentTarget.style.color = 'var(--t2)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = `${s.color}1A`; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 4px 12px ${s.color}20` }}
+                onMouseLeave={e => { e.currentTarget.style.background = `${s.color}0D`; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none' }}
               >
-                {s}
+                {s.text}
               </button>
             ))}
           </div>
@@ -420,6 +455,10 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
                       />
                     )}
                   </div>
+
+                  {i === messages.length - 1 && !msg.loading && msg.limitations && msg.limitations.length > 0 && (
+                    <Limitations items={msg.limitations} />
+                  )}
                 </div>
               )}
             </div>
@@ -475,6 +514,7 @@ export default function PitchAgent({ matches }: { matches: Match[] }) {
           </button>
         </div>
       )}
+      </div>{/* end content-wrap */}
     </div>
   )
 }

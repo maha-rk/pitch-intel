@@ -58,7 +58,8 @@ def pass_network(match_id: int):
 
 @app.get("/scout/{query}")
 def scout(query: str, lang: str = Query(default='en')):
-    return search_players(query, lang=lang)
+    results = search_players(query, lang=lang)
+    return {'results': results, 'limitations': LIMITATIONS['scout_eye'] if results else []}
 
 @app.post("/agent/query")
 def agent_query(body: dict):
@@ -83,7 +84,7 @@ def fan_decoder(body: dict):
     language = body.get('language', 'en')
     history = body.get('history', [])
     answer = decode_question(question, language, history)
-    return {"answer": answer}
+    return {"answer": answer, "limitations": LIMITATIONS['fan_decoder']}
 
 @app.on_event("startup")
 async def startup_event():
@@ -183,6 +184,53 @@ def what_if(match_id: int, home_team: str, away_team: str, remove_index: int = -
         return run_what_if(match_id, home_team, away_team, remove_index=ri, lang=lang)
     except Exception as e:
         return JSONResponse(status_code=500, content={'error': str(e)})
+
+@app.post("/var-oracle/ask")
+def var_oracle_ask(body: dict):
+    from backend.granite import client as groq, MODEL as model, lang_instruction
+    question = body.get('question', '').strip()
+    register = body.get('register', 'fan')
+    lang = body.get('lang', 'en')
+    if not question:
+        return {'error': 'No question provided'}
+    if register == 'fan':
+        prompt = (
+            f"{lang_instruction(lang)}"
+            "You are a friendly football commentator explaining rules to a casual fan in the stadium. "
+            "IMPORTANT: Do NOT use technical jargon or quote Law text verbatim. "
+            "Instead, explain the rule as you would to a 14-year-old who loves football but has never read the rulebook. "
+            "Use everyday analogies and plain English. You may briefly mention which Law covers it at the end in brackets. "
+            "Keep it conversational and under 3 sentences. "
+            f"Question: {question}"
+        )
+    else:
+        prompt = (
+            f"{lang_instruction(lang)}"
+            "You are a FIFA referee instructor writing for a qualified match analyst. "
+            "Cite the exact Law number and clause. Quote the precise FIFA wording where relevant. "
+            "Address edge cases, referee discretion, and VAR protocol where applicable. "
+            "Use technical terminology — DOGSO, IDFK, encroachment, etc. Be comprehensive and exact. "
+            "Structure: Law reference first, then the rule, then any edge cases. "
+            f"Question: {question}"
+        )
+    try:
+        resp = groq.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=320
+        )
+        answer = resp.choices[0].message.content or ''
+        has_law_ref = any(f'Law {i}' in answer or f'law {i}' in answer for i in range(1, 18))
+        completeness = 'COMPLETE' if has_law_ref else 'PARTIAL'
+        law_ref = next((f'Law {i}' for i in range(1, 18) if f'Law {i}' in answer or f'law {i}' in answer), None)
+        return {
+            'answer': answer,
+            'completeness': completeness,
+            'law_ref': law_ref,
+            'limitations': LIMITATIONS['var_oracle'],
+        }
+    except Exception as e:
+        return {'error': str(e)}
 
 @app.post("/var-oracle/analyse")
 async def var_oracle_analyse(file: UploadFile = File(...)):

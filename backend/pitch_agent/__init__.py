@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv('backend/.env')
 from backend.granite import client, MODEL, lang_instruction
+from backend.transparency import LIMITATIONS
 
 TOOLS = [
     {
@@ -200,6 +201,7 @@ def run_agent(question: str, match_context: dict | None = None, lang: str = 'en'
         "You are Pitch Intel — an elite AI football analyst powered by IBM Granite. "
         "You have access to real StatsBomb World Cup data via tools. "
         "ALWAYS call the relevant tools first before answering — ground every claim in real data. "
+        "IMPORTANT: call each tool at most ONCE per conversation turn. If you have already received a tool result, do not call that tool again — synthesise your answer from the data you already have. "
         "Be specific: name players, cite exact minutes, reference xG values and pass counts. "
         "Your analysis should be insightful, concise, and grounded entirely in the numbers. "
         "Use analyst language — not generic commentary."
@@ -227,20 +229,61 @@ def run_agent(question: str, match_context: dict | None = None, lang: str = 'en'
     ]
 
     tool_calls_log: list[dict] = []
+    called_tools: set[str] = set()  # prevent the agent looping on the same tool
 
-    for _ in range(5):
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            tools=TOOLS,
-            tool_choice="auto",
-            max_tokens=900
-        )
+    for _ in range(8):
+        try:
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=messages,
+                tools=TOOLS,
+                tool_choice="auto",
+                max_tokens=900
+            )
+        except Exception as e:
+            # Groq/Llama sometimes emits XML-style tool calls (<function=name [args]</function>)
+            # instead of JSON. Parse the failed_generation and execute the tool manually.
+            recovered = False
+            try:
+                err_body = e.response.json() if hasattr(e, 'response') else {}  # type: ignore
+                raw = err_body.get('error', {}).get('failed_generation', '')
+                if raw:
+                    import re as _re
+                    for m in _re.finditer(r'<function=(\w+)\s+(\{.*?\})\s*</function>', raw, _re.DOTALL):
+                        fn_name, fn_args_str = m.group(1), m.group(2)
+                        try:
+                            fn_args = json.loads(fn_args_str)
+                        except Exception:
+                            continue
+                        tool_key = f"{fn_name}:{fn_args.get('match_id','')}"
+                        if tool_key in called_tools:
+                            continue
+                        called_tools.add(tool_key)
+                        result = _call_tool(fn_name, fn_args)
+                        tool_calls_log.append({'tool': fn_name, 'args': fn_args, 'preview': result[:300]})
+                        fake_id = f"recovered_{fn_name}"
+                        messages.append({
+                            "role": "assistant", "content": "",
+                            "tool_calls": [{"id": fake_id, "type": "function", "function": {"name": fn_name, "arguments": fn_args_str}}]
+                        })
+                        messages.append({"role": "tool", "tool_call_id": fake_id, "content": result})
+                        recovered = True
+            except Exception:
+                pass
+            if not recovered:
+                # No tool call recoverable — synthesise from whatever context exists
+                try:
+                    fb = client.chat.completions.create(model=MODEL, messages=messages, max_tokens=900)
+                    return {'answer': fb.choices[0].message.content or 'Could not generate a response.', 'tool_calls': tool_calls_log, 'limitations': LIMITATIONS['pitch_agent'] if tool_calls_log else []}
+                except Exception:
+                    pass
+                return {'answer': 'Analysis failed — the model had a tool-use error. Try a simpler question.', 'tool_calls': tool_calls_log, 'limitations': LIMITATIONS['pitch_agent']}
+            continue  # loop again with recovered tool results in context
 
         msg = response.choices[0].message
 
         if not msg.tool_calls:
-            return {'answer': msg.content or '', 'tool_calls': tool_calls_log}
+            return {'answer': msg.content or '', 'tool_calls': tool_calls_log, 'limitations': LIMITATIONS['pitch_agent'] if tool_calls_log else []}
 
         # Append assistant turn with tool calls
         messages.append({
@@ -256,20 +299,23 @@ def run_agent(question: str, match_context: dict | None = None, lang: str = 'en'
             ]
         })
 
-        # Execute each tool call
+        # Execute each tool call (skip duplicates — agent sometimes loops on same tool)
         for tc in msg.tool_calls:
             fn_name = tc.function.name
             fn_args = json.loads(tc.function.arguments)
-            # Granite sometimes double-encodes: args comes back as a JSON string
-            # of a JSON object rather than a parsed dict. Unwrap it here so the
-            # log shows clean key=value pairs and _call_tool receives a real dict.
+            # Groq/Granite sometimes double-encodes: unwrap before anything else
             if not isinstance(fn_args, dict):
                 try:
                     inner = json.loads(fn_args)
                     if isinstance(inner, dict):
                         fn_args = inner
                 except (json.JSONDecodeError, TypeError):
-                    pass
+                    fn_args = {}
+            tool_key = f"{fn_name}:{fn_args.get('match_id','')}"
+            if tool_key in called_tools:
+                messages.append({"role": "tool", "tool_call_id": tc.id, "content": "[data already retrieved in this session — synthesise from previous results]"})
+                continue
+            called_tools.add(tool_key)
             result = _call_tool(fn_name, fn_args)
 
             tool_calls_log.append({
@@ -284,4 +330,4 @@ def run_agent(question: str, match_context: dict | None = None, lang: str = 'en'
                 "content": result
             })
 
-    return {'answer': 'Agent reached iteration limit.', 'tool_calls': tool_calls_log}
+    return {'answer': 'Agent reached iteration limit.', 'tool_calls': tool_calls_log, 'limitations': LIMITATIONS['pitch_agent'] if tool_calls_log else []}

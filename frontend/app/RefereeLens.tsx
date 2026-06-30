@@ -1,4 +1,5 @@
 'use client'
+import API_URL from './api-url'
 
 import { useState, useEffect } from 'react'
 import Limitations from './Limitations'
@@ -74,20 +75,27 @@ export default function RefereeLens() {
   const [report, setReport] = useState<RefereeReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const typedReport = useTypewriter(report?.ai_report)
 
   useEffect(() => {
-    fetch('http://localhost:8001/referees')
+    fetch(`${API_URL}/referees`)
       .then(r => r.json())
       .then((data: RefereeStub[]) => { setReferees(data); setListLoading(false) })
       .catch(() => setListLoading(false))
   }, [])
+
+  useEffect(() => {
+    const handler = () => { if (selected && report) analyse(selected) }
+    window.addEventListener('lang-change', handler)
+    return () => window.removeEventListener('lang-change', handler)
+  }, [selected, report])
 
   const analyse = async (ref: RefereeStub) => {
     setSelected(ref)
     setReport(null)
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:8001/referee/${encodeURIComponent(ref.name)}?lang=${getLang()}`)
+      const res = await fetch(`${API_URL}/referee/${encodeURIComponent(ref.name)}?lang=${getLang()}`)
       const data: RefereeReport = await res.json()
       setReport(data)
     } catch { /* silent */ }
@@ -102,6 +110,13 @@ export default function RefereeLens() {
   const maxYellows = Math.max(...referees.map(r => r.matches), 1)
 
   return (
+    <div>
+    <style>{`
+      @keyframes flagsway {
+        0%   { transform: rotate(-10deg) translateX(-3px); }
+        100% { transform: rotate(10deg)  translateX(3px);  }
+      }
+    `}</style>
     <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 14, height: 'calc(100vh - 150px)' }}>
 
       {/* ── Referee list panel ── */}
@@ -131,7 +146,7 @@ export default function RefereeLens() {
               style={{
                 padding: '9px 12px', borderBottom: '1px solid var(--bd)', cursor: 'pointer',
                 borderLeft: `3px solid ${selected?.name === ref.name ? 'var(--green)' : 'transparent'}`,
-                background: selected?.name === ref.name ? '#0A1D14' : 'transparent',
+                background: selected?.name === ref.name ? 'rgba(22,101,52,0.09)' : 'transparent',
                 transition: 'all 0.1s',
               }}
               onMouseEnter={e => { if (selected?.name !== ref.name) e.currentTarget.style.background = 'var(--bg3)' }}
@@ -148,32 +163,62 @@ export default function RefereeLens() {
       {/* ── Detail panel ── */}
       <div style={{ overflowY: 'auto', minHeight: 0 }}>
         {!selected && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8 }}>
-            <div style={{ fontSize: 44, opacity: 0.08 }}>🏁</div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--t3)' }}>Select a referee to analyse</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 0, position: 'relative', overflow: 'hidden' }}>
+            <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none' }} viewBox="0 0 600 500" preserveAspectRatio="xMidYMid slice" fill="none">
+              <rect x="180" y="80" width="90" height="130" rx="6" stroke="#F59E0B" strokeWidth="4" opacity="0.16"/>
+              <rect x="330" y="100" width="90" height="130" rx="6" stroke="#F59E0B" strokeWidth="4" opacity="0.13"/>
+              <rect x="255" y="90" width="90" height="130" rx="6" fill="#F59E0B" opacity="0.08"/>
+              <circle cx="200" cy="340" r="55" stroke="#F59E0B" strokeWidth="4" opacity="0.14"/>
+              <circle cx="200" cy="340" r="28" stroke="#F59E0B" strokeWidth="3" opacity="0.10"/>
+              <circle cx="400" cy="360" r="40" stroke="#F59E0B" strokeWidth="3" opacity="0.10"/>
+              <line x1="50" y1="250" x2="550" y2="250" stroke="#F59E0B" strokeWidth="2" strokeDasharray="10 8" opacity="0.10"/>
+              <line x1="50" y1="300" x2="550" y2="300" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="6 10" opacity="0.08"/>
+              <circle cx="460" cy="150" r="8" fill="#F59E0B" opacity="0.16"/>
+              <circle cx="140" cy="170" r="6" fill="#F59E0B" opacity="0.13"/>
+            </svg>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#F59E0B', opacity: 0.8 }}>MODULE 05 · REFEREE ANALYTICS</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 76, letterSpacing: '0.05em', lineHeight: 0.88, color: 'var(--t1)', textAlign: 'center', marginTop: 10 }}>REFEREE</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 76, letterSpacing: '0.12em', lineHeight: 0.88, color: '#F59E0B', textAlign: 'center', borderBottom: '3px solid #F59E0B', paddingBottom: 6, marginBottom: 4 }}>LENS</div>
+            <div style={{ fontSize: 52, opacity: 0.75, margin: '20px 0 14px', display: 'inline-block', transformOrigin: 'bottom center', animation: 'flagsway 1.8s ease-in-out infinite alternate' }}>🚩</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--t3)', marginTop: 14 }}>Select a referee to analyse</div>
           </div>
         )}
 
         {selected && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-            {/* Header */}
-            <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, padding: '16px 20px' }}>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: 4 }}>
-                Referee Profile
+            {/* Header — always visible immediately from stub data */}
+            <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: 4 }}>
+                  Referee Profile
+                </div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, letterSpacing: '0.06em', color: 'var(--t1)', lineHeight: 1 }}>
+                  {selected.name}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 4 }}>{selected.country} · {selected.matches} World Cup match{selected.matches !== 1 ? 'es' : ''}</div>
               </div>
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, letterSpacing: '0.06em', color: 'var(--t1)', lineHeight: 1 }}>
-                {selected.name}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 4 }}>{selected.country} · {selected.matches} World Cup matches</div>
+              {loading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'rgba(22,101,52,0.08)', border: '1px solid rgba(22,101,52,0.2)', borderRadius: 6 }}>
+                  <div style={{ display: 'flex', gap: 3 }}>
+                    {[0,1,2].map(d => (
+                      <div key={d} style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--green)', animation: 'lpb 1.1s ease infinite', animationDelay: `${d * 0.18}s` }} />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--green)', letterSpacing: '0.08em' }}>IBM Granite analysing…</span>
+                </div>
+              )}
             </div>
 
+            {/* Stat skeleton — visible while loading, replaced when report arrives */}
             {loading && (
-              <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, padding: '32px 24px', textAlign: 'center' }}>
-                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: '0.1em', color: 'var(--t2)', marginBottom: 6 }}>
-                  Loading Match Data
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--t3)' }}>Fetching StatsBomb events · IBM Granite generating consistency report…</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                {['Matches', 'Yellow Cards', 'Red Cards', 'Avg Fouls'].map((lbl, i) => (
+                  <div key={lbl} style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, padding: '14px 16px', textAlign: 'center' }}>
+                    <div style={{ height: 32, background: 'var(--bg4)', borderRadius: 4, marginBottom: 8, animation: 'lpb 1.4s ease infinite', animationDelay: `${i * 0.12}s` }} />
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--t3)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{lbl}</div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -203,7 +248,7 @@ export default function RefereeLens() {
                   </div>
                   <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t3)', marginBottom: 6 }}>Symmetry Index</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t1)', marginBottom: 6 }}>Symmetry Index</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, color: report.avg_foul_symmetry >= 0.8 ? '#10B981' : report.avg_foul_symmetry >= 0.6 ? '#F59E0B' : '#EF4444', lineHeight: 1 }}>
                           {report.avg_foul_symmetry.toFixed(2)}
@@ -212,14 +257,14 @@ export default function RefereeLens() {
                           <div style={{ height: 6, background: 'var(--bg4)', borderRadius: 3, overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${report.avg_foul_symmetry * 100}%`, background: report.avg_foul_symmetry >= 0.8 ? '#10B981' : report.avg_foul_symmetry >= 0.6 ? '#F59E0B' : '#EF4444', borderRadius: 3, transition: 'width 0.5s ease' }} />
                           </div>
-                          <div style={{ fontSize: 10, color: 'var(--t3)', marginTop: 4 }}>
+                          <div style={{ fontSize: 10, color: 'var(--t1)', marginTop: 4 }}>
                             {report.avg_foul_symmetry >= 0.8 ? 'Highly consistent whistle' : report.avg_foul_symmetry >= 0.6 ? 'Moderate asymmetry detected' : 'Significant foul imbalance'}
                           </div>
                         </div>
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t3)', marginBottom: 6 }}>Home Bias Index</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t1)', marginBottom: 6 }}>Home Bias Index</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, color: report.home_bias_index <= 0.35 ? '#10B981' : report.home_bias_index <= 0.6 ? '#F59E0B' : '#EF4444', lineHeight: 1 }}>
                           {Math.round(report.home_bias_index * 100)}%
@@ -228,7 +273,7 @@ export default function RefereeLens() {
                           <div style={{ height: 6, background: 'var(--bg4)', borderRadius: 3, overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${report.home_bias_index * 100}%`, background: report.home_bias_index <= 0.35 ? '#10B981' : report.home_bias_index <= 0.6 ? '#F59E0B' : '#EF4444', borderRadius: 3, transition: 'width 0.5s ease' }} />
                           </div>
-                          <div style={{ fontSize: 10, color: 'var(--t3)', marginTop: 4 }}>
+                          <div style={{ fontSize: 10, color: 'var(--t1)', marginTop: 4 }}>
                             matches where home team had more fouls called
                           </div>
                         </div>
@@ -238,10 +283,10 @@ export default function RefereeLens() {
                 </div>
 
                 {/* AI consistency report */}
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden' }}>
-                  <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)' }}>IBM Granite · Consistency Analysis</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {typedReport && (
+                  <div style={{ background: 'var(--bg2)', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden' }}>
+                    <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--green)' }}>IBM Granite · Consistency Analysis</span>
                       <button
                         onClick={() => exportReport({
                           title: `Referee Analysis — ${report.referee}`,
@@ -253,15 +298,24 @@ export default function RefereeLens() {
                             ...(report.limitations?.length ? [{ heading: "What this can't tell you", body: report.limitations.map(l => `- ${l}`).join('\n') }] : []),
                           ],
                         })}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', cursor: 'pointer', background: 'var(--bg3)', border: '1px solid var(--bd2)', borderRadius: 5, color: 'var(--t2)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}
-                      >⬇ PDF</button>
-                      <span style={{ fontSize: 10, color: 'var(--t3)' }}>Grounded in StatsBomb event data</span>
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', cursor: 'pointer', background: 'var(--green)', border: 'none', borderRadius: 5, color: '#000', fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'Inter, sans-serif' }}
+                      >⬇ Export PDF</button>
+                    </div>
+                    <div style={{ padding: '16px 18px' }}>
+                      {(() => {
+                        const paras = typedReport.split(/\n\n+/).filter(p => p.trim())
+                        return paras.length > 0
+                          ? paras.map((p, i, arr) => (
+                              <div key={i} style={{ marginBottom: i < arr.length - 1 ? 14 : 0 }}>
+                                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: 5 }}>0{i + 1}</div>
+                                <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.8 }}>{p}</div>
+                              </div>
+                            ))
+                          : <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.8 }}>{typedReport}</div>
+                      })()}
                     </div>
                   </div>
-                  <div style={{ padding: '16px 18px' }}>
-                    <TypedReport text={report.ai_report} />
-                  </div>
-                </div>
+                )}
 
                 <Limitations items={report.limitations} />
 
@@ -323,5 +377,7 @@ export default function RefereeLens() {
         )}
       </div>
     </div>
+    </div>
   )
 }
+

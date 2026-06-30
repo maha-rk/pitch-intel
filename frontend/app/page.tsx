@@ -1,4 +1,5 @@
 'use client'
+import API_URL from './api-url'
 
 import { useEffect, useState } from 'react'
 import FanDecoder from './FanDecoder'
@@ -37,6 +38,7 @@ interface HeatmapData {
   match_id: number
   minute: number
   teams: Record<string, PlayerPosition[]>
+  ball_position?: { x: number; y: number }
   narration: string
 }
 
@@ -68,27 +70,27 @@ interface PassConn  { from: string; to: string; team: string; count: number }
 interface PassNetwork { connections: PassConn[]; positions: Record<string,{x:number;y:number;team:string}>; formations?: Record<string,string> }
 
 const TEAM_COLORS: Record<string, string> = {
-  'Brazil': '#F59E0B', 'Belgium': '#EF4444', 'France': '#3B82F6',
-  'Croatia': '#F97316', 'England': '#E2E8F0', 'Argentina': '#60A5FA',
-  'Germany': '#38BDF8', 'Spain': '#F87171', 'Portugal': '#4ADE80',
-  'Uruguay': '#93C5FD', 'Canada': '#10B981', 'Morocco': '#FBBF24',
-  'Japan': '#EF4444', 'Netherlands': '#F97316', 'Senegal': '#A78BFA',
-  'United States': '#60A5FA', 'Australia': '#FBBF24', 'Switzerland': '#F87171',
-  'Poland': '#E2E8F0', 'South Korea': '#EF4444', 'Tunisia': '#EF4444',
-  'Cameroon': '#4ADE80', 'Ghana': '#F59E0B', 'Ecuador': '#F59E0B',
-  'Qatar': '#8B5CF6', 'Iran': '#4ADE80', 'Saudi Arabia': '#4ADE80',
+  'Brazil': '#D97706', 'Belgium': '#DC2626', 'France': '#1D4ED8',
+  'Croatia': '#EA580C', 'England': '#1E3A8A', 'Argentina': '#2563EB',
+  'Germany': '#0284C7', 'Spain': '#DC2626', 'Portugal': '#16A34A',
+  'Uruguay': '#2563EB', 'Canada': '#DC2626', 'Morocco': '#D97706',
+  'Japan': '#1D4ED8', 'Netherlands': '#EA580C', 'Senegal': '#7C3AED',
+  'United States': '#2563EB', 'Australia': '#D97706', 'Switzerland': '#DC2626',
+  'Poland': '#DC2626', 'South Korea': '#DC2626', 'Tunisia': '#D97706',
+  'Cameroon': '#16A34A', 'Ghana': '#D97706', 'Ecuador': '#D97706',
+  'Qatar': '#7C3AED', 'Iran': '#16A34A', 'Saudi Arabia': '#16A34A',
   'default1': '#10B981', 'default2': '#F97316',
 }
 
 const TYPE_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
-  'Goal':         { color: '#4ADE80', bg: '#14532D', label: 'Goal' },
-  'Yellow Card':  { color: '#FBBF24', bg: '#451A03', label: 'Yellow' },
-  'Red Card':     { color: '#F87171', bg: '#450A0A', label: 'Red' },
-  'Substitution': { color: '#C4B5FD', bg: '#2E1065', label: 'Sub' },
-  'Shot':         { color: '#7DD3FC', bg: '#0C2A4A', label: 'Shot' },
+  'Goal':         { color: '#166534', bg: 'rgba(22,101,52,0.12)',   label: 'Goal' },
+  'Yellow Card':  { color: '#92400E', bg: 'rgba(180,83,9,0.12)',    label: 'Yellow' },
+  'Red Card':     { color: '#991B1B', bg: 'rgba(220,38,38,0.10)',   label: 'Red' },
+  'Substitution': { color: '#5B21B6', bg: 'rgba(91,33,182,0.10)',   label: 'Sub' },
+  'Shot':         { color: '#1D4ED8', bg: 'rgba(29,78,216,0.10)',   label: 'Shot' },
 }
 
-const modules = ['VAR Oracle', 'TacticalLens', 'Pitch Agent', 'Scout Eye', 'Referee Lens', 'Match Explainer', 'EmotiPulse', 'Fan Decoder', 'Debate', 'What-If Lab', 'Match Companion']
+const modules = ['VAR Oracle', 'Tactical Lens', 'Pitch Agent', 'Scout Eye', 'Referee Lens', 'Match Explainer', 'EmotiPulse', 'Fan Decoder', 'Debate', 'Alter Ego', 'Dugout Brief']
 
 export default function Home() {
   const [activeModule, setActiveModule] = useState('VAR Oracle')
@@ -101,6 +103,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [scoutQuery, setScoutQuery] = useState('')
   const [scoutResults, setScoutResults] = useState<ScoutResult[]>([])
+  const [scoutLimitations, setScoutLimitations] = useState<string[]>([])
   const [scoutLoading, setScoutLoading] = useState(false)
   const [introPlayed, setIntroPlayed] = useState(false)
   const [heroAnimDone, setHeroAnimDone] = useState(false)
@@ -108,7 +111,7 @@ export default function Home() {
   const [mode, setMode] = useState<'beginner'|'fan'|'coach'>('fan')
   const [expandedMoment, setExpandedMoment] = useState<number|null>(null)
   const [tacticsView, setTacticsView] = useState<'overview'|'xg'|'shots'|'passes'|'penalties'>('overview')
-  const [pitchView, setPitchView] = useState<'2d'|'3d'>('2d')
+  const [pitchView, setPitchView] = useState<'2d'|'3d'>('3d')
   const [xgFlow, setXgFlow] = useState<XgPoint[]>([])
   const [shotMap, setShotMap] = useState<ShotPoint[]>([])
   const [passNetwork, setPassNetwork] = useState<PassNetwork|null>(null)
@@ -121,7 +124,7 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    fetch('http://localhost:8001/matches')
+    fetch(`${API_URL}/matches`)
       .then(r => r.json()).then(setMatches).catch(() => {})
   }, [])
 
@@ -136,11 +139,11 @@ export default function Home() {
     setExpandedMoment(null)
     setTacticsView('overview')
     const [momRes, mntRes, xgRes, shotRes, passRes] = await Promise.all([
-      fetch(`http://localhost:8001/moments/${m.match_id}`).then(r=>r.json()).catch(()=>[]),
-      fetch(`http://localhost:8001/momentum/${m.match_id}`).then(r=>r.json()).catch(()=>[]),
-      fetch(`http://localhost:8001/xg-flow/${m.match_id}`).then(r=>r.json()).catch(()=>[]),
-      fetch(`http://localhost:8001/shot-map/${m.match_id}`).then(r=>r.json()).catch(()=>[]),
-      fetch(`http://localhost:8001/pass-network/${m.match_id}`).then(r=>r.json()).catch(()=>null),
+      fetch(`${API_URL}/moments/${m.match_id}`).then(r=>r.json()).catch(()=>[]),
+      fetch(`${API_URL}/momentum/${m.match_id}`).then(r=>r.json()).catch(()=>[]),
+      fetch(`${API_URL}/xg-flow/${m.match_id}`).then(r=>r.json()).catch(()=>[]),
+      fetch(`${API_URL}/shot-map/${m.match_id}`).then(r=>r.json()).catch(()=>[]),
+      fetch(`${API_URL}/pass-network/${m.match_id}`).then(r=>r.json()).catch(()=>null),
     ])
     setWhyVerdict(null)
     setMoments(momRes)
@@ -153,7 +156,7 @@ export default function Home() {
   const loadTactical = async (matchId: number, min: number) => {
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:8001/tactical/${matchId}/${min}?lang=${getLang()}`)
+      const res = await fetch(`${API_URL}/tactical/${matchId}/${min}?lang=${getLang()}`)
       const data = await res.json()
       setHeatmapData(data)
     } catch(e) {}
@@ -164,9 +167,10 @@ export default function Home() {
     if (!scoutQuery.trim()) return
     setScoutLoading(true)
     try {
-      const res = await fetch(`http://localhost:8001/scout/${encodeURIComponent(scoutQuery)}?lang=${getLang()}`)
+      const res = await fetch(`${API_URL}/scout/${encodeURIComponent(scoutQuery)}?lang=${getLang()}`)
       const data = await res.json()
-      setScoutResults(data)
+      setScoutResults(data.results || [])
+      setScoutLimitations(data.limitations || [])
     } catch(e) {}
     setScoutLoading(false)
   }
@@ -176,11 +180,16 @@ export default function Home() {
     setTimeout(() => setHeroAnimDone(true), 1600)
   }
 
+  const handleBack = () => {
+    setHeroAnimDone(false)
+    setEntering(false)
+  }
+
   const loadVerdict = async () => {
     if (!selectedMatch) return
     setWhyLoading(true)
     try {
-      const res = await fetch(`http://localhost:8001/verdict/${selectedMatch.match_id}?home_team=${encodeURIComponent(selectedMatch.home_team)}&away_team=${encodeURIComponent(selectedMatch.away_team)}&home_score=${selectedMatch.home_score ?? 0}&away_score=${selectedMatch.away_score ?? 0}&lang=${getLang()}`)
+      const res = await fetch(`${API_URL}/verdict/${selectedMatch.match_id}?home_team=${encodeURIComponent(selectedMatch.home_team)}&away_team=${encodeURIComponent(selectedMatch.away_team)}&home_score=${selectedMatch.home_score ?? 0}&away_score=${selectedMatch.away_score ?? 0}&lang=${getLang()}`)
       const data = await res.json()
       setWhyVerdict(data.verdict)
       setWhyLimitations(data.limitations)
@@ -190,6 +199,12 @@ export default function Home() {
 
   const getColor = (team: string, index: number) =>
     TEAM_COLORS[team] || (index === 0 ? TEAM_COLORS['default1'] : TEAM_COLORS['default2'])
+
+  useEffect(() => {
+    const handler = () => { if (selectedMatch && whyVerdict) loadVerdict() }
+    window.addEventListener('lang-change', handler)
+    return () => window.removeEventListener('lang-change', handler)
+  }, [selectedMatch, whyVerdict])
 
   const teams = momentum.length > 0
     ? [...new Set(momentum.map(m => m.team))]
@@ -213,89 +228,84 @@ export default function Home() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Bebas+Neue&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
-          --bg:  #070C14; --bg2: #0D1525; --bg3: #152035;
-          --bg4: #1B2A42; --bg5: #243348;
-          --bd:  #1E2D42; --bd2: #2A3D58; --bd3: #3A5270;
-          --t1: #F1F5F9; --t2: #94A3B8; --t3: #4A5568;
-          --green: #22C55E; --green2:#4ADE80; --gold: #EAB308;
-          --red: #EF4444; --blue: #3B82F6;
-          --g-chip: #0E2A1C; --g-border: #1A5535;
-          --r-chip: #2D0D0D; --r-border: #7B2020;
-          --a-chip: #2D1900; --a-border: #7A3800;
-          --b-chip: #0C1E3D; --b-border: #1E3A6E;
+          --bg:  #F0E9D2; --bg2: #EAE0C8; --bg3: #E2D7B4;
+          --bg4: #D8CCA4; --bg5: #CEC090;
+          --bd:  #DDD5BB; --bd2: #CFC7A4; --bd3: #C0B892;
+          --t1: #111111; --t2: #4A4435; --t3: #8A8070;
+          --green: #166534; --green2: #22C55E; --gold: #B45309;
+          --red: #DC2626; --blue: #1D4ED8;
+          --g-chip: rgba(22,101,52,0.10); --g-border: rgba(22,101,52,0.32);
+          --r-chip: rgba(220,38,38,0.07); --r-border: rgba(220,38,38,0.22);
+          --a-chip: rgba(180,83,9,0.09);  --a-border: rgba(180,83,9,0.28);
+          --b-chip: rgba(29,78,216,0.07); --b-border: rgba(29,78,216,0.22);
         }
         body { background:var(--bg); color:var(--t1); font-family:'Inter',sans-serif; font-size:13px; line-height:1.5; overflow-x:hidden; -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums; }
 
-        .hero { position:fixed; inset:0; z-index:999; background:#050810; overflow-y:auto; transition:opacity 0.7s ease; }
+        .hero { position:fixed; inset:0; z-index:999; background:transparent; overflow-y:auto; transition:opacity 0.7s ease; }
         .hero.out { opacity:0; pointer-events:none; }
-        .hero-svg { position:fixed; inset:0; width:100%; height:100%; opacity:0.18; pointer-events:none; }
+        .hero-svg { position:fixed; inset:0; width:100%; height:100%; opacity:0.04; pointer-events:none; }
         .lp-wrap { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:0 32px 48px; }
         .lp-hero { padding:64px 0 48px; }
-        .lp-eyebrow { display:inline-flex; align-items:center; gap:7px; font-size:9px; font-weight:800; letter-spacing:0.22em; text-transform:uppercase; color:var(--green); background:var(--g-chip); border:1px solid var(--g-border); padding:5px 12px; border-radius:2px; margin-bottom:24px; }
-        .lp-eyebrow-dot { width:5px; height:5px; background:var(--green); border-radius:50%; animation:lpb 1.4s ease infinite; flex-shrink:0; }
-        .lp-title { font-family:'Bebas Neue',sans-serif; font-size:108px; letter-spacing:0.06em; color:var(--t1); line-height:0.9; margin:0 0 20px; }
-        .lp-title-accent { color:var(--green); }
-        .lp-sub { font-size:16px; color:var(--t2); line-height:1.65; max-width:540px; margin:0 0 32px; }
+        .lp-title { font-family:'Bebas Neue',sans-serif; font-size:108px; letter-spacing:0.06em; color:#FFFFFF; line-height:0.9; margin:0 0 20px; text-shadow:0 2px 20px rgba(0,0,0,0.55); white-space:nowrap; }
+        .lp-title-accent { color:#4ADE80; }
+        .lp-sub { font-size:16px; color:#F0EDE4; line-height:1.65; margin:0 0 32px; font-weight:600; text-shadow:0 1px 8px rgba(0,0,0,0.6); white-space:nowrap; }
         .lp-diff { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:48px; }
-        .lp-diff-item { display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--bg2); border:1px solid var(--bd); border-radius:4px; flex:1; min-width:200px; }
-        .lp-diff-n { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:0.04em; line-height:1; flex-shrink:0; }
-        .lp-diff-l { font-size:10px; color:var(--t3); line-height:1.4; font-weight:600; }
+        .lp-diff-item { display:flex; align-items:center; gap:8px; padding:16px 20px; background:#F0E9D2; border:1px solid rgba(200,190,165,0.7); border-radius:4px; flex:1; min-width:200px; }
+        .lp-diff-n { font-family:'Bebas Neue',sans-serif; font-size:40px; letter-spacing:0.04em; line-height:1; flex-shrink:0; }
+        .lp-diff-l { font-size:12px; color:var(--t3); line-height:1.4; font-weight:600; }
         .lp-section-lbl { font-size:9px; font-weight:800; letter-spacing:0.22em; text-transform:uppercase; color:var(--t3); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--bd); }
-        .lp-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--bd); border:1px solid var(--bd); border-radius:6px; overflow:hidden; margin-bottom:32px; }
-        .lp-card { background:var(--bg); padding:18px; display:flex; flex-direction:column; gap:8px; transition:background 0.15s; border-left:3px solid transparent; }
-        .lp-card:hover { background:var(--bg2); }
+        .lp-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; background:rgba(0,0,0,0.22); overflow:visible; margin-bottom:32px; grid-auto-rows:minmax(220px,auto); }
+        .lp-card { background:#F0E9D2; padding:18px; display:flex; flex-direction:column; gap:8px; transition:background 0.15s, transform 0.18s ease, box-shadow 0.18s ease; border-left:3px solid transparent; position:relative; }
+        .lp-card:hover { background:#E8DFC8; transform:scale(1.04) translateY(-3px); box-shadow:0 14px 36px rgba(0,0,0,0.30); z-index:5; }
         .lp-card-top { display:flex; align-items:center; gap:8px; }
         .lp-card-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-        .lp-card-num { font-size:9px; font-weight:700; color:var(--t3); margin-left:auto; font-variant-numeric:tabular-nums; }
-        .lp-card-name { font-size:13px; font-weight:800; color:var(--t1); line-height:1.2; }
-        .lp-card-desc { font-size:11px; color:var(--t3); line-height:1.55; flex:1; }
-        .lp-card-tag { font-size:8px; font-weight:700; padding:2px 7px; border-radius:2px; align-self:flex-start; letter-spacing:0.06em; border:1px solid; }
-        .lp-enter { display:block; margin:0 auto 28px; padding:15px 44px; background:var(--green); color:#000; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:0.2em; border:none; border-radius:3px; cursor:pointer; transition:background 0.15s; }
+        .lp-card-num { font-size:11px; font-weight:700; color:var(--t3); margin-left:auto; font-variant-numeric:tabular-nums; }
+        .lp-card-name { font-size:15px; font-weight:800; color:var(--t1); line-height:1.2; }
+        .lp-card-desc { font-size:12px; color:var(--t2); line-height:1.6; flex:1; }
+        .lp-card-tag { font-size:10px; font-weight:700; padding:3px 9px; border-radius:2px; align-self:flex-start; letter-spacing:0.06em; border:1px solid; }
+        .lp-enter { display:block; margin:0 auto 28px; padding:15px 44px; background:var(--green); color:#fff; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:0.2em; border:none; border-radius:3px; cursor:pointer; transition:background 0.15s; }
         .lp-enter:hover { background:var(--green2); }
-        .lp-footer { font-size:10px; color:var(--t3); text-align:center; line-height:1.9; padding-top:24px; border-top:1px solid var(--bd); }
+        .lp-footer { font-size:13px; color:#F0EDE4; text-align:center; line-height:1.9; padding:20px 24px; background:rgba(0,0,0,0.35); margin-top:8px; border-radius:3px; }
 
         .app { opacity:0; transition:opacity 0.6s ease; }
         .app.in { opacity:1; }
 
-        .topbar { position:sticky; top:0; z-index:100; height:56px; background:rgba(11,18,24,0.98); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-bottom:1px solid var(--bd); display:flex; align-items:center; padding:0 24px; }
-        .wm { display:flex; align-items:center; gap:10px; flex-shrink:0; padding-right:24px; border-right:1px solid rgba(255,255,255,0.07); }
+        .topbar { position:sticky; top:0; z-index:100; height:56px; background:#0B1929; border-bottom:none; display:flex; align-items:center; padding:0 24px; }
+        .wm { display:flex; align-items:center; gap:10px; flex-shrink:0; padding-right:24px; border-right:1px solid #1A2E44; }
         .wm-icon { flex-shrink:0; }
         .wm-text { display:flex; flex-direction:column; gap:1px; }
-        .wm-mark { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:0.16em; color:var(--t1); line-height:1; }
-        .wm-mark b { color:var(--green); font-weight:inherit; }
-        .wm-sub { font-family:'Inter',sans-serif; font-size:7px; font-weight:700; letter-spacing:0.16em; color:var(--t3); text-transform:uppercase; }
-        .nav { display:flex; height:100%; overflow-x:auto; flex:1; justify-content:flex-start; gap:0; }
+        .wm-mark { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:0.16em; color:#E2E8F0; line-height:1; }
+        .wm-mark b { color:#22C55E; font-weight:inherit; }
+        .wm-sub { font-family:'Inter',sans-serif; font-size:7px; font-weight:700; letter-spacing:0.16em; color:#4A7098; text-transform:uppercase; }
+        .nav { display:flex; height:100%; overflow-x:auto; flex:1; justify-content:space-evenly; gap:0; }
         .nav::-webkit-scrollbar { display:none; }
-        .nbtn { display:flex; align-items:center; padding:0 9px; font-size:10.5px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--t3); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color 0.12s,border-color 0.12s; font-family:'Inter',sans-serif; height:100%; }
-        .nbtn:hover { color:var(--t1); }
-        .nbtn.on { color:var(--t1); border-bottom-color:var(--green); }
-        .topbar-r { margin-left:auto; display:flex; align-items:center; gap:10px; flex-shrink:0; padding-left:20px; border-left:1px solid rgba(255,255,255,0.07); }
+        .nbtn { display:flex; align-items:center; padding:0 9px; font-size:10.5px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#7A99B8; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color 0.12s,border-color 0.12s; font-family:'Inter',sans-serif; height:100%; }
+        .nbtn:hover { color:#E2E8F0; }
+        .nbtn.on { color:#FFFFFF; border-bottom-color:#22C55E; }
+        .topbar-r { margin-left:auto; display:flex; align-items:center; gap:10px; flex-shrink:0; padding-left:20px; border-left:1px solid #1A2E44; }
         .tourn { font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--t3); }
         .live { display:flex; align-items:center; gap:5px; background:var(--g-chip); color:var(--green); border:1px solid var(--g-border); font-size:8px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; padding:5px 11px; border-radius:2px; }
         .lpip { width:5px; height:5px; background:var(--green); border-radius:50%; animation:lpb 1.4s ease infinite; }
         @keyframes lpb { 0%,100%{opacity:1} 50%{opacity:0.15} }
 
-        .ticker { background:var(--bg2); border-bottom:1px solid var(--bd); padding:5px 20px; display:flex; gap:24px; overflow:hidden; }
-        .ti { display:flex; align-items:center; gap:5px; font-size:9px; font-weight:700; letter-spacing:0.06em; color:var(--t3); white-space:nowrap; }
-        .tdot { color:var(--green); font-size:5px; opacity:0.7; }
 
-        .content { padding:18px 22px; }
+        .content { padding:18px 22px; min-height:calc(100vh - 110px); background-image:linear-gradient(rgba(0,0,0,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.05) 1px,transparent 1px); background-size:38px 38px; }
 
         .tac { display:grid; grid-template-columns:260px 1fr; gap:14px; height:calc(100vh - 148px); }
         .fpanel { background:var(--bg2); border-radius:6px; overflow:hidden; display:flex; flex-direction:column; border:1px solid var(--bd); min-height:0; }
         .phd { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--bd); background:var(--bg3); flex-shrink:0; }
-        .pttl { font-size:9px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; color:var(--t2); }
-        .pct { font-size:9px; font-weight:700; color:var(--green); background:var(--g-chip); border:1px solid var(--g-border); padding:1px 7px; border-radius:2px; }
+        .pttl { font-size:11px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; color:var(--t1); }
+        .pct { font-size:11px; font-weight:700; color:var(--green); background:var(--g-chip); border:1px solid var(--g-border); padding:2px 9px; border-radius:2px; }
         .flist { overflow-y:auto; flex:1; min-height:0; }
         .flist::-webkit-scrollbar { width:2px; }
         .flist::-webkit-scrollbar-thumb { background:var(--bg5); }
         .frow { display:flex; align-items:center; justify-content:space-between; padding:9px 14px; border-bottom:1px solid var(--bd); border-left:2px solid transparent; cursor:pointer; transition:background 0.12s,transform 0.12s; gap:10px; }
         .frow:hover { background:var(--bg3); transform:translateX(2px); }
-        .frow.sel { background:#0A1D15; border-left-color:var(--green); transform:none; }
+        .frow.sel { background:rgba(22,101,52,0.09); border-left-color:var(--green); transform:none; }
         .frow-info { flex:1; min-width:0; }
         .fn { font-size:11px; font-weight:600; color:var(--t1); line-height:1.3; }
         .fvs { color:var(--t3); font-size:9px; font-weight:500; margin:0 4px; }
-        .fd { font-size:9px; font-weight:500; color:var(--t3); margin-top:2px; letter-spacing:0.02em; }
+        .fd { font-size:11px; font-weight:600; color:var(--t2); margin-top:2px; letter-spacing:0.02em; }
         .fsc { font-size:12px; font-weight:800; color:var(--t1); white-space:nowrap; flex-shrink:0; font-variant-numeric:tabular-nums; }
         .farr { color:var(--t3); font-size:10px; flex-shrink:0; }
         .frow.sel .farr { color:var(--green); }
@@ -335,8 +345,8 @@ export default function Home() {
         .ov-moments .klist { max-height:none; flex:1; }
         .card { background:var(--bg2); border-radius:6px; overflow:hidden; border:1px solid var(--bd); }
         .chd { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--bd); background:var(--bg3); }
-        .cttl { font-size:9px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:var(--t2); }
-        .csub { font-size:9px; font-weight:500; color:var(--t3); }
+        .cttl { font-size:11px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:var(--t1); }
+        .csub { font-size:11px; font-weight:500; color:var(--t2); }
 
         .mom-body { padding:14px 16px; }
         .mom-leg { display:flex; gap:14px; margin-bottom:8px; }
@@ -394,8 +404,8 @@ export default function Home() {
         .ai-panel-body { padding:12px 14px; }
         .ai-panel-txt { font-size:12px; color:var(--t2); line-height:1.75; }
         .mom-insight { margin-top:10px; padding:8px 12px; background:var(--bg3); border:1px solid var(--bd); border-left:3px solid var(--green); border-radius:0 4px 4px 0; font-size:11px; color:var(--t2); line-height:1.6; }
-        .why-btn { display:flex; align-items:center; gap:6px; padding:8px 16px; background:transparent; border:1px solid var(--bd2); border-radius:4px; color:var(--t2); font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.12s; width:100%; justify-content:center; }
-        .why-btn:hover { border-color:var(--green); color:var(--green); }
+        .why-btn { display:flex; align-items:center; gap:6px; padding:10px 16px; background:transparent; border:1px solid var(--bd2); border-radius:4px; color:#1E3A8A; font-size:12px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.12s; width:100%; justify-content:center; }
+        .why-btn:hover { border-color:#1E3A8A; background:rgba(30,58,138,0.04); }
         .why-btn:disabled { opacity:0.4; cursor:not-allowed; }
         .why-panel { border-top:1px solid var(--bd); background:var(--bg3); padding:14px; }
         .why-lbl { font-size:9px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; color:var(--green); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
@@ -406,9 +416,10 @@ export default function Home() {
         .tooltip-wrap:hover .tooltip-box { opacity:1; }
         @keyframes dotFadeIn { from{opacity:0} to{opacity:1} }
 
-        .nomatch { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; }
-        .nmico { font-size:44px; opacity:0.08; }
-        .nmtxt { font-size:10px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--t3); }
+        .nomatch { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:0; position:relative; overflow:hidden; }
+        .nmico { font-size:56px; opacity:0.75; margin:20px 0 14px; display:inline-block; animation:ballroll 2.4s ease-in-out infinite alternate; }
+        .nmtxt { font-size:10px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--t3); margin-top:14px; }
+        @keyframes ballroll { 0%{transform:translateX(-36px) rotate(0deg)} 100%{transform:translateX(36px) rotate(360deg)} }
 
         /* SCOUT */
         .sp { max-width:840px; }
@@ -472,8 +483,8 @@ export default function Home() {
         .fd-ask:disabled { background:var(--bg5); color:var(--t3); cursor:not-allowed; }
 
         /* TACTICS SUB-NAV */
-        .tvnav { display:flex; gap:2px; flex-shrink:0; background:var(--bg); border:1px solid var(--bd); border-radius:3px; padding:3px; }
-        .tvbtn { padding:5px 14px; border-radius:2px; border:none; background:none; color:var(--t3); font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.12s; white-space:nowrap; }
+        .tvnav { display:flex; gap:2px; flex-shrink:0; background:var(--bg); border:1px solid var(--bd); border-radius:3px; padding:4px; }
+        .tvbtn { padding:8px 20px; border-radius:2px; border:none; background:none; color:var(--t3); font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.12s; white-space:nowrap; }
         .tvbtn:hover { color:var(--t2); }
         .tvbtn.on { background:var(--bg4); color:var(--t1); }
 
@@ -549,21 +560,26 @@ export default function Home() {
 
       {/* LANDING PAGE */}
       <div className={`hero${heroAnimDone?' out':''}`}>
+        {/* ── Full-page field background — fixed, rotated 90° to portrait ── */}
+        <div style={{position:'fixed',inset:0,zIndex:0,overflow:'hidden',pointerEvents:'none'}}>
+          <div style={{position:'absolute',top:'50%',left:'50%',width:'120vh',height:'120vw',backgroundImage:"url('https://images.unsplash.com/photo-1595169043775-1612bf911b0f?w=1600&q=90&auto=format&fit=crop')",backgroundSize:'cover',backgroundPosition:'center',transform:'translate(-50%,-50%) rotate(90deg)'}}/>
+          {/* Dark overlay — keeps text legible over bright green field */}
+          <div style={{position:'absolute',inset:0,background:'rgba(10,30,10,0.35)'}}/>
+        </div>
         <svg className="hero-svg" viewBox="0 0 1000 680" preserveAspectRatio="xMidYMid slice">
-          <rect width="1000" height="680" fill="#04070A"/>
           {Array.from({length:14},(_,i)=>(
-            <rect key={i} x="100" y={80+i*38} width="800" height="38" fill={i%2===0?'#0C1E0C':'#081408'}/>
+            <rect key={i} x="100" y={80+i*38} width="800" height="38" fill={i%2===0?'rgba(22,80,22,0.06)':'rgba(22,80,22,0.03)'}/>
           ))}
-          <rect x="100" y="80" width="800" height="532" fill="none" stroke="#0E2A0E" strokeWidth="1.5"/>
-          <line x1="500" y1="82" x2="500" y2="610" stroke="#0E2A0E" strokeWidth="1.5"/>
-          <circle cx="500" cy="346" r="90" fill="none" stroke="#0E2A0E" strokeWidth="1.5"/>
-          <circle cx="500" cy="346" r="5" fill="#0E2A0E"/>
-          <rect x="100" y="200" width="150" height="292" fill="none" stroke="#0E2A0E" strokeWidth="1.5"/>
-          <rect x="750" y="200" width="150" height="292" fill="none" stroke="#0E2A0E" strokeWidth="1.5"/>
-          <rect x="100" y="272" width="55" height="148" fill="none" stroke="#0E2A0E" strokeWidth="1"/>
-          <rect x="845" y="272" width="55" height="148" fill="none" stroke="#0E2A0E" strokeWidth="1"/>
-          <ellipse cx="100" cy="346" rx="70" ry="70" fill="none" stroke="#0E2A0E" strokeWidth="1" clipPath="url(#lclip)"/>
-          <ellipse cx="900" cy="346" rx="70" ry="70" fill="none" stroke="#0E2A0E" strokeWidth="1" clipPath="url(#rclip)"/>
+          <rect x="100" y="80" width="800" height="532" fill="none" stroke="rgba(22,101,52,0.22)" strokeWidth="1.5"/>
+          <line x1="500" y1="82" x2="500" y2="610" stroke="rgba(22,101,52,0.22)" strokeWidth="1.5"/>
+          <circle cx="500" cy="346" r="90" fill="none" stroke="rgba(22,101,52,0.22)" strokeWidth="1.5"/>
+          <circle cx="500" cy="346" r="5" fill="rgba(22,101,52,0.3)"/>
+          <rect x="100" y="200" width="150" height="292" fill="none" stroke="rgba(22,101,52,0.22)" strokeWidth="1.5"/>
+          <rect x="750" y="200" width="150" height="292" fill="none" stroke="rgba(22,101,52,0.22)" strokeWidth="1.5"/>
+          <rect x="100" y="272" width="55" height="148" fill="none" stroke="rgba(22,101,52,0.16)" strokeWidth="1"/>
+          <rect x="845" y="272" width="55" height="148" fill="none" stroke="rgba(22,101,52,0.16)" strokeWidth="1"/>
+          <ellipse cx="100" cy="346" rx="70" ry="70" fill="none" stroke="rgba(22,101,52,0.16)" strokeWidth="1" clipPath="url(#lclip)"/>
+          <ellipse cx="900" cy="346" rx="70" ry="70" fill="none" stroke="rgba(22,101,52,0.16)" strokeWidth="1" clipPath="url(#rclip)"/>
           <defs>
             <clipPath id="lclip"><rect x="100" y="276" width="70" height="140"/></clipPath>
             <clipPath id="rclip"><rect x="830" y="276" width="70" height="140"/></clipPath>
@@ -573,9 +589,8 @@ export default function Home() {
         <div className="lp-wrap">
           {/* Hero */}
           <div className="lp-hero">
-            <div className="lp-eyebrow"><div className="lp-eyebrow-dot"/>FIFA World Cup · AI Command Center</div>
-            <h1 className="lp-title">PITCH<br/><span className="lp-title-accent">INTEL</span></h1>
-            <p className="lp-sub">Upload a match clip — YOLOv8 reads it, IBM Docling pulls the exact FIFA law, IBM Granite delivers the verdict. That&apos;s one of eleven modules.</p>
+            <h1 className="lp-title">PITCH <span className="lp-title-accent">INTEL</span></h1>
+            <p className="lp-sub">11 IBM Granite modules. 128 World Cup matches. Real StatsBomb data — VAR decisions, tactics, scouting, live commentary, and more.</p>
             <div className="lp-diff">
               {([
                 {n:'128', l1:'WC Matches', l2:'2018 + 2022 · StatsBomb', c:'#00D46A'},
@@ -594,12 +609,15 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Module grid */}
-          <div className="lp-section-lbl">11 Working Modules · IBM Granite Powers All</div>
           <div className="lp-grid">
+            {/* Header card — first cell */}
+            <div className="lp-card" style={{borderLeftColor:'var(--green)',background:'rgba(3,18,3,0.82)',justifyContent:'center',alignItems:'center',gap:10,textAlign:'center'}}>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,letterSpacing:'0.06em',color:'#FFFFFF',lineHeight:1.05}}>11 WORKING<br/>MODULES</div>
+              <div style={{fontSize:13,fontWeight:900,letterSpacing:'0.22em',textTransform:'uppercase',color:'#4ADE80',marginTop:8}}>IBM GRANITE<br/>POWERS ALL</div>
+            </div>
             {([
               {name:'VAR Oracle',     desc:'An explainable VAR companion — not a referee replacement. YOLOv8 reads the footage · IBM Docling RAG retrieves the exact FIFA law · IBM Granite explains why the decision aligns with the laws, with the retrieved clause visible',tag:'YOLOv8 · Docling RAG · Granite', c:'#F97316'},
-              {name:'TacticalLens',   desc:'xG flow, shot maps, pass networks, auto-detected formations, penalty analysis, and match verdict from StatsBomb event data', tag:'StatsBomb Events',   c:'#3B7CF6'},
+              {name:'Tactical Lens',   desc:'xG flow, shot maps, pass networks, auto-detected formations, penalty analysis, and match verdict from StatsBomb event data', tag:'StatsBomb Events',   c:'#3B7CF6'},
               {name:'Pitch Agent',    desc:'IBM Granite agent with 6 real StatsBomb tools (also exposed over MCP) — full reasoning chain visible, What-If counterfactuals grounded in real data', tag:'Tool Use · MCP', c:'#00D46A'},
               {name:'Scout Eye',      desc:'Natural-language search across 6,000+ WC players — FAISS embeddings, AI scouting reports',    tag:'FAISS · Semantic',   c:'#06B6D4'},
               {name:'Referee Lens',   desc:'Foul symmetry index + home bias metric across all 128 matches — AI consistency verdict per referee', tag:'128 Match Analysis', c:'#F59E0B'},
@@ -607,20 +625,19 @@ export default function Home() {
               {name:'EmotiPulse',     desc:'Per-minute atmosphere scoring via event formula with pulse SVG + broadcast AI report',         tag:'Minute-by-Minute',   c:'#EF4444'},
               {name:'Fan Decoder',    desc:'Football AI chatbot in 21 languages with full World Cup context and conversation history — voice in, audio out',      tag:'21 Languages · Voice',        c:'#EC4899'},
               {name:'Debate',         desc:'Two opposing IBM Granite agents argue the same match data — Advocate vs Skeptic — then a neutral Granite consensus verdict', tag:'Multi-Agent',        c:'#2DD4BF'},
-              {name:'What-If Lab',    desc:'Understand how much a single goal shaped a past result — remove it and re-run 10,000 xG Monte Carlo sims to see the computed shift, with IBM Granite explaining it. Explainability, not prediction', tag:'Monte Carlo · xG',   c:'#A855F7'},
-              {name:'Match Companion',desc:'Accessibility-first: IBM Granite turns a match into a spoken audio description for blind / low-vision fans, doubling as live captions for deaf fans — in 21 languages. Understand the match without seeing, hearing, or speaking its language', tag:'Accessibility · Voice · 21 Languages', c:'#22D3EE'},
+              {name:'Alter Ego',      desc:'Understand how much a single goal shaped a past result — remove it and re-run 10,000 xG Monte Carlo sims to see the computed shift, with IBM Granite explaining it. Explainability, not prediction', tag:'Monte Carlo · xG',   c:'#A855F7'},
+              {name:'Dugout Brief',   desc:'Accessibility-first: IBM Granite turns a match into a spoken audio description for blind / low-vision fans, doubling as live captions for deaf fans — in 21 languages. Understand the match without seeing, hearing, or speaking its language', tag:'Accessibility · Voice · 21 Languages', c:'#22D3EE'},
             ] as {name:string;desc:string;tag:string;c:string}[]).map((m,i)=>(
               <div key={m.name} className="lp-card" style={{borderLeftColor:m.c}}>
                 <div className="lp-card-top">
-                  <div className="lp-card-dot" style={{background:m.c,boxShadow:`0 0 7px ${m.c}55`}}/>
-                  <span className="lp-card-num">0{i+1}</span>
+                  <span className="lp-card-num">{String(i+1).padStart(2,'0')}</span>
                 </div>
-                <div className="lp-card-name">{m.name}</div>
+                <div className="lp-card-name" style={{color:m.c}}>{m.name}</div>
                 <div className="lp-card-desc">{m.desc}</div>
                 <span className="lp-card-tag" style={{color:m.c,borderColor:`${m.c}33`,background:`${m.c}10`}}>{m.tag}</span>
               </div>
             ))}
-          </div>
+          </div>{/* end lp-grid */}
 
           {/* CTA */}
           <button className="lp-enter" onClick={handleEnter}>
@@ -629,8 +646,7 @@ export default function Home() {
 
           {/* Footer */}
           <div className="lp-footer">
-            IBM Granite (watsonx.ai) · IBM Docling · IBM Context Forge (MCP) · StatsBomb Open Data · YOLOv8 (Ultralytics) · FAISS (Meta AI) · sentence-transformers<br/>
-            IBM SkillsBuild June Innovation Challenge 2026
+            IBM Granite (watsonx.ai) · IBM Docling · IBM Context Forge (MCP) · StatsBomb Open Data · YOLOv8 (Ultralytics) · FAISS (Meta AI) · sentence-transformers
           </div>
         </div>
       </div>
@@ -670,17 +686,23 @@ export default function Home() {
       {/* APP */}
       <div className={`app${heroAnimDone?' in':''}`}>
         <div className="topbar">
+          {/* Back to landing page */}
+          <button onClick={handleBack} title="Back to home" style={{background:'none',border:'none',cursor:'pointer',color:'#4A7098',padding:'0 18px 0 0',display:'flex',alignItems:'center',height:'100%',borderRight:'1px solid #1A2E44',marginRight:18,flexShrink:0,transition:'color 0.12s'}} onMouseEnter={e=>(e.currentTarget.style.color='#E2E8F0')} onMouseLeave={e=>(e.currentTarget.style.color='#4A7098')}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M13 5L8 10L13 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
           <div className="wm">
             <svg className="wm-icon" width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <rect x="1" y="4" width="20" height="14" rx="1.5" stroke="#00D46A" strokeWidth="1.3"/>
-              <line x1="11" y1="4" x2="11" y2="18" stroke="#00D46A" strokeWidth="0.9" opacity="0.55"/>
-              <circle cx="11" cy="11" r="3.5" stroke="#00D46A" strokeWidth="0.9" opacity="0.55"/>
-              <line x1="1" y1="7.5" x2="21" y2="7.5" stroke="#00D46A" strokeWidth="0.6" opacity="0.25"/>
-              <line x1="1" y1="14.5" x2="21" y2="14.5" stroke="#00D46A" strokeWidth="0.6" opacity="0.25"/>
+              <rect x="1" y="4" width="20" height="14" rx="1.5" stroke="#166534" strokeWidth="1.3"/>
+              <line x1="11" y1="4" x2="11" y2="18" stroke="#166534" strokeWidth="0.9" opacity="0.55"/>
+              <circle cx="11" cy="11" r="3.5" stroke="#166534" strokeWidth="0.9" opacity="0.55"/>
+              <line x1="1" y1="7.5" x2="21" y2="7.5" stroke="#166534" strokeWidth="0.6" opacity="0.25"/>
+              <line x1="1" y1="14.5" x2="21" y2="14.5" stroke="#166534" strokeWidth="0.6" opacity="0.25"/>
             </svg>
             <div className="wm-text">
               <div className="wm-mark">PITCH <b>INTEL</b></div>
-              <div className="wm-sub">World Cup 2026 AI</div>
+              <div className="wm-sub">Powered by IBM Granite</div>
             </div>
           </div>
           <div className="nav">
@@ -695,18 +717,12 @@ export default function Home() {
           </div>
         </div>
 
-        <LiveScores />
-
-        <div className="ticker">
-          {['Brazil 2–1 Belgium · QF 2018','France 1–0 Morocco · SF 2022','England 2–0 Sweden · QF 2018','Argentina 3–3 France · Final 2022','128 matches · StatsBomb open data'].map((t,i)=>(
-            <div key={i} className="ti"><span className="tdot">●</span>{t}</div>
-          ))}
-        </div>
+        <LiveScores parch={true} />
 
         <div className="content">
 
           {/* TACTICAL LENS */}
-          {activeModule==='TacticalLens' && (
+          {activeModule==='Tactical Lens' && (
             <div className="tac">
               <div className="fpanel">
                 <div className="phd">
@@ -717,7 +733,7 @@ export default function Home() {
                   {matches.map(m=>(
                     <div key={m.match_id} className={`frow${selectedMatch?.match_id===m.match_id?' sel':''}`} onClick={()=>loadMatch(m)}>
                       <div className="frow-info">
-                        <div className="fn">{m.home_team}<span className="fvs">vs</span>{m.away_team}</div>
+                        <div className="fn"><span style={{color:TEAM_COLORS[m.home_team]||'var(--t1)'}}>{m.home_team}</span><span className="fvs">vs</span><span style={{color:TEAM_COLORS[m.away_team]||'var(--t1)'}}>{m.away_team}</span></div>
                         <div className="fd">{m.match_date}</div>
                       </div>
                       {m.home_score !== undefined && (
@@ -732,6 +748,27 @@ export default function Home() {
               <div className="mv">
                 {!selectedMatch ? (
                   <div className="nomatch">
+                    <svg style={{position:'absolute',inset:0,width:'100%',height:'100%',pointerEvents:'none'}} viewBox="0 0 600 500" preserveAspectRatio="xMidYMid slice" fill="none">
+                      <rect x="60" y="40" width="480" height="420" rx="4" stroke="#3B7CF6" strokeWidth="3" opacity="0.14"/>
+                      <line x1="300" y1="40" x2="300" y2="460" stroke="#3B7CF6" strokeWidth="2" opacity="0.10"/>
+                      <circle cx="300" cy="250" r="70" stroke="#3B7CF6" strokeWidth="2.5" opacity="0.12"/>
+                      <circle cx="300" cy="250" r="5" fill="#3B7CF6" opacity="0.18"/>
+                      <rect x="60" y="155" width="110" height="190" stroke="#3B7CF6" strokeWidth="2" opacity="0.10"/>
+                      <rect x="430" y="155" width="110" height="190" stroke="#3B7CF6" strokeWidth="2" opacity="0.10"/>
+                      <rect x="60" y="205" width="40" height="90" stroke="#3B7CF6" strokeWidth="2" opacity="0.14"/>
+                      <rect x="500" y="205" width="40" height="90" stroke="#3B7CF6" strokeWidth="2" opacity="0.14"/>
+                      <circle cx="150" cy="250" r="4" fill="#3B7CF6" opacity="0.16"/>
+                      <circle cx="450" cy="250" r="4" fill="#3B7CF6" opacity="0.16"/>
+                      <line x1="60" y1="40" x2="540" y2="460" stroke="#3B7CF6" strokeWidth="1" strokeDasharray="6 8" opacity="0.06"/>
+                      <line x1="540" y1="40" x2="60" y2="460" stroke="#3B7CF6" strokeWidth="1" strokeDasharray="6 8" opacity="0.06"/>
+                    </svg>
+                    <div style={{fontSize:10,fontWeight:800,letterSpacing:'0.3em',textTransform:'uppercase',color:'#3B7CF6',opacity:0.8}}>MODULE 02 · MATCH ANALYTICS</div>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:76,letterSpacing:'0.05em',lineHeight:0.88,color:'var(--t1)',textAlign:'center',marginTop:10}}>
+                      TACTICAL
+                    </div>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:76,letterSpacing:'0.12em',lineHeight:0.88,color:'#3B7CF6',textAlign:'center',borderBottom:'3px solid #3B7CF6',paddingBottom:6,marginBottom:4}}>
+                      LENS
+                    </div>
                     <div className="nmico">⚽</div>
                     <div className="nmtxt">Select a fixture to begin</div>
                   </div>
@@ -799,43 +836,47 @@ export default function Home() {
 
                     {/* Why did this match end this way? */}
                     <div className="card" style={{flexShrink:0}}>
+                      {/* Card header — always visible, holds mode selector so association is clear */}
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',borderBottom:'1px solid var(--bd)',background:'var(--bg3)'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <span className="ai-ibm" style={{fontSize:9,padding:'3px 8px'}}>IBM</span>
+                          <span style={{fontSize:11,fontWeight:800,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--t1)'}}>Granite · Match Verdict</span>
+                        </div>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <span style={{fontSize:11,fontWeight:700,color:'var(--t2)',letterSpacing:'0.04em'}}>Explanation depth:</span>
+                          <div className="mode-row" style={{gap:4}}>
+                            {(['beginner','fan','coach'] as const).map(m=>(
+                              <button key={m} className={`mbtn${mode===m?' on':''}`} onClick={()=>setMode(m)} style={{fontSize:10,padding:'6px 16px'}}>
+                                {m==='beginner'?'Beginner':m==='fan'?'Fan':'Coach'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                       {!whyVerdict && (
                         <div style={{padding:'10px 14px'}}>
                           <button className="why-btn" disabled={whyLoading} onClick={loadVerdict}>
                             {whyLoading ? 'IBM Granite analysing…' : 'Why did this match end this way?'}
                           </button>
+                          <div className="mode-hint" style={{textAlign:'center',marginTop:6}}>
+                            {mode==='beginner'?'Plain language explanations':mode==='fan'?'Football vocabulary & context':'Tactical depth & analysis'}
+                          </div>
                         </div>
                       )}
                       {whyVerdict && (
                         <div className="why-panel">
-                          <div className="why-lbl">
-                            <span className="ai-ibm">IBM</span>
-                            Granite · Match Verdict
-                          </div>
                           <div className="why-txt">{whyVerdict}</div>
-                          <div style={{padding:'8px 14px 0'}}>
+                          <div style={{padding:'8px 0 0'}}>
                             <SpeakButton text={whyVerdict} />
                           </div>
-                          <div style={{padding:'0 14px 12px'}}>
+                          <div style={{paddingTop:4}}>
                             <Limitations items={whyLimitations} />
                           </div>
                         </div>
                       )}
                     </div>
 
-                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexShrink:0}}>
-                      <div className="modes" style={{flex:1}}>
-                        <div className="mode-row">
-                          {(['beginner','fan','coach'] as const).map(m=>(
-                            <button key={m} className={`mbtn${mode===m?' on':''}`} onClick={()=>setMode(m)}>
-                              {m==='beginner'?'Beginner':m==='fan'?'Fan':'Coach'}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="mode-hint">
-                          {mode==='beginner'?'Plain language explanations':mode==='fan'?'Football vocabulary & context':'Tactical depth & analysis'}
-                        </div>
-                      </div>
+                    <div style={{display:'flex',justifyContent:'center',flexShrink:0,marginTop:10}}>
                       <div className="tvnav">
                         {([['overview','Overview'],['xg','xG Flow'],['shots','Shot Map'],['passes','Pass Network'],['penalties','Penalties']] as const).map(([v,lbl])=>(
                           <button key={v} className={`tvbtn${tacticsView===v?' on':''}`} onClick={()=>setTacticsView(v)}>{lbl}</button>
@@ -963,7 +1004,7 @@ export default function Home() {
                       <div className="chd">
                         <div>
                           <span className="cttl">Player Positioning</span>
-                          <div style={{fontSize:9,color:'var(--t3)',marginTop:2,letterSpacing:'0.04em'}}>StatsBomb tracking · XY coordinates · 22 players</div>
+                          <div style={{fontSize:12,fontWeight:600,color:'var(--t1)',marginTop:2,letterSpacing:'0.02em'}}>StatsBomb tracking · XY coordinates · 22 players</div>
                         </div>
                         <span className="csub">Select minute · analyse shape</span>
                       </div>
@@ -996,8 +1037,9 @@ export default function Home() {
                           <ThreePitch
                             positions={heatmapData.teams as any}
                             teamColors={['#3B7CF6','#F87171']}
-                            height={340}
+                            height={380}
                             minute={heatmapData.minute}
+                            ballPosition={heatmapData.ball_position}
                           />
                         ) : (
                         <>
@@ -1294,12 +1336,43 @@ export default function Home() {
 
           {/* SCOUT EYE */}
           {activeModule==='Scout Eye'&&(
-            <div className="sp">
-              <div className="shdr">
-                <div className="sey">Module 02 · Semantic search</div>
-                <div className="sh1">Scout Eye</div>
-                <div className="sp2">Search 6,000+ players across 21 competitions using natural language. AI generates full scouting reports from real StatsBomb shot data.</div>
+            <div>
+              {/* ── Dark hero panel — full bleed ── */}
+              <div style={{ position:'relative', background:'linear-gradient(135deg,#020E14 0%,#061824 55%,#020E14 100%)', borderRadius:0, padding:'40px 48px 36px', marginBottom:24, overflow:'hidden', borderBottom:'1px solid rgba(6,182,212,0.18)', marginTop:-18, marginLeft:-22, marginRight:-22 }}>
+                <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', opacity:0.08 }} viewBox="0 0 860 260" preserveAspectRatio="xMidYMid slice">
+                  <circle cx="680" cy="130" r="90" fill="none" stroke="#06B6D4" strokeWidth="1.2"/>
+                  <circle cx="680" cy="130" r="55" fill="none" stroke="#06B6D4" strokeWidth="0.8"/>
+                  <circle cx="680" cy="130" r="20" fill="none" stroke="#06B6D4" strokeWidth="0.6"/>
+                  <circle cx="680" cy="130" r="3" fill="#06B6D4"/>
+                  <line x1="590" y1="130" x2="648" y2="130" stroke="#06B6D4" strokeWidth="1"/>
+                  <line x1="712" y1="130" x2="770" y2="130" stroke="#06B6D4" strokeWidth="1"/>
+                  <line x1="680" y1="40" x2="680" y2="98" stroke="#06B6D4" strokeWidth="1"/>
+                  <line x1="680" y1="162" x2="680" y2="220" stroke="#06B6D4" strokeWidth="1"/>
+                  {([[160,55],[260,95],[140,155],[310,75],[220,170],[340,140],[100,90],[280,165]] as [number,number][]).map(([x,y],i)=>(
+                    <circle key={i} cx={x} cy={y} r={i%2===0?3.5:2.5} fill="#06B6D4" opacity={i%3===0?0.7:0.45}/>
+                  ))}
+                  <line x1="60" y1="20" x2="560" y2="20" stroke="#06B6D4" strokeWidth="0.5" strokeDasharray="4,8"/>
+                  <line x1="60" y1="240" x2="560" y2="240" stroke="#06B6D4" strokeWidth="0.5" strokeDasharray="4,8"/>
+                  <line x1="60" y1="20" x2="60" y2="240" stroke="#06B6D4" strokeWidth="0.5" strokeDasharray="4,8"/>
+                </svg>
+                <div style={{ position:'relative', zIndex:1 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                    <span style={{ fontSize:10, fontWeight:800, letterSpacing:'0.28em', textTransform:'uppercase', color:'#06B6D4' }}>MODULE 04 · SEMANTIC SEARCH</span>
+                    <div style={{ display:'flex', gap:5 }}>
+                      {(['FAISS','IBM Granite','StatsBomb'] as const).map(tag=>(
+                        <span key={tag} style={{ padding:'2px 9px', background:'rgba(6,182,212,0.12)', border:'1px solid rgba(6,182,212,0.28)', borderRadius:3, fontSize:9, fontWeight:700, color:'#06B6D4', letterSpacing:'0.06em' }}>{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:'0.05em', lineHeight:0.88, borderBottom:'3px solid #06B6D4', paddingBottom:6, display:'inline-block' }}>
+                    <span style={{ fontSize:80, color:'#FFFFFF' }}>SCOUT </span><span style={{ fontSize:80, color:'#06B6D4' }}>EYE</span>
+                  </div>
+                  <div style={{ fontSize:15, color:'rgba(255,255,255,0.65)', marginTop:18, lineHeight:1.65, maxWidth:820, fontWeight:400 }}>
+                    Search 6,000+ players across 21 competitions using natural language. IBM Granite generates full scouting reports from real StatsBomb shot data — find your next signing in seconds.
+                  </div>
+                </div>
               </div>
+              <div style={{ maxWidth:840, margin:'0 auto' }}>
               <div className="srow">
                 <input className="sinput" type="text" value={scoutQuery} onChange={e=>setScoutQuery(e.target.value)} onKeyDown={e=>e.key==='Enter'&&runScout()} placeholder="e.g.  clinical left-footed finisher with high xG under pressure..."/>
                 <button className="sbtn" onClick={runScout} disabled={scoutLoading}>{scoutLoading?'Scanning...':'Search'}</button>
@@ -1362,6 +1435,8 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
+
+                {scoutResults.length > 0 && <Limitations items={scoutLimitations} />}
 
                 {/* HEAD-TO-HEAD COMPARISON */}
                 {scoutResults.length >= 2 && scoutResults[0].radar && scoutResults[1].radar && (() => {
@@ -1427,6 +1502,7 @@ export default function Home() {
                   )
                 })()}
               </div>
+              </div>
             </div>
           )}
 
@@ -1451,14 +1527,14 @@ export default function Home() {
           {/* DEBATE */}
           {activeModule==='Debate'&&(<DebateRoom matches={matches} />)}
 
-          {/* WHAT-IF LAB */}
-          {activeModule==='What-If Lab'&&(<WhatIfLab matches={matches} />)}
+          {/* ALTER EGO */}
+          {activeModule==='Alter Ego'&&(<WhatIfLab matches={matches} />)}
 
-          {/* MATCH COMPANION */}
-          {activeModule==='Match Companion'&&(<MatchCompanion matches={matches} />)}
+          {/* DUGOUT BRIEF */}
+          {activeModule==='Dugout Brief'&&(<MatchCompanion matches={matches} />)}
 
           {/* COMING SOON */}
-          {!['TacticalLens','Scout Eye','VAR Oracle','Match Explainer','Fan Decoder','EmotiPulse','Pitch Agent','Referee Lens','Debate','What-If Lab','Match Companion'].includes(activeModule)&&(
+          {!['Tactical Lens','Scout Eye','VAR Oracle','Match Explainer','Fan Decoder','EmotiPulse','Pitch Agent','Referee Lens','Debate','Alter Ego','Dugout Brief'].includes(activeModule)&&(
             <div className="coming">
               <div className="comingh">{activeModule}</div>
               <div className="comings">Module in development</div>
