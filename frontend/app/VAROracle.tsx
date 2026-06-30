@@ -58,6 +58,8 @@ interface Verdict {
     detail: string
     method: 'granite-guardian' | 'granite-selfcheck'
     rag_score: number | null
+    auto_corrected?: boolean
+    original_risk?: string
   }
 }
 
@@ -616,6 +618,11 @@ export default function VAROracle() {
                       <div style={{ fontSize: 9, color: 'var(--t2)', lineHeight: 1.35 }}>
                         {g.trusted ? '✓ Verdict grounded in FIFA law' : '⚠ Verify against law text'}
                       </div>
+                      {g.auto_corrected && (
+                        <div style={{ fontSize: 9, color: '#93C5FD', marginTop: 4, fontWeight: 800, letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span>⚡</span><span>Auto-corrected by Guardian</span>
+                        </div>
+                      )}
                     </div>
                   )
                 })()}

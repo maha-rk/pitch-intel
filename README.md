@@ -1,5 +1,7 @@
 # Pitch Intel
 
+[![Tests](https://github.com/maha-rk/pitch-intel/actions/workflows/test.yml/badge.svg)](https://github.com/maha-rk/pitch-intel/actions/workflows/test.yml)
+
 > **The World Cup is watched by billions who understand it differently — shaped by language, culture, knowledge of the game, and trust in decisions. Pitch Intel helps anyone — in any language, at any level of expertise, including fans who cannot see or hear the match — understand *why* it unfolded as it did, with the evidence always shown.**
 
 > Upload a football match clip. **YOLOv8** reads it frame-by-frame. **IBM Docling** retrieves the exact FIFA law that applies. **IBM Granite** explains *why* a decision aligns with that law — grounded in the actual rulebook text, not in training approximations. This is an **explainable VAR companion that helps people understand decisions, not a system that replaces the referee.** The evidence is always shown: the law chunk, the CV readings, the confidence score.

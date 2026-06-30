@@ -15,6 +15,7 @@ import { SpeakButton } from './voice'
 import LanguageSelector from './LanguageSelector'
 import { getLang } from './lang'
 import ThreePitch from './ThreePitch'
+import LiveScores from './LiveScores'
 
 interface Match {
   match_id: number
@@ -693,6 +694,8 @@ export default function Home() {
             <LanguageSelector />
           </div>
         </div>
+
+        <LiveScores />
 
         <div className="ticker">
           {['Brazil 2–1 Belgium · QF 2018','France 1–0 Morocco · SF 2022','England 2–0 Sweden · QF 2018','Argentina 3–3 France · Final 2022','128 matches · StatsBomb open data'].map((t,i)=>(

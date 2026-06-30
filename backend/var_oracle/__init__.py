@@ -546,6 +546,55 @@ Respond with ONLY valid JSON — no prose before or after:
         rag_score=top_rag_score,
     )
 
+    # --- Guardian Auto-Heal: HIGH risk → regenerate with law-anchored prompt ---
+    # Unlike offline adversarial probes, this corrects hallucinations at inference time.
+    if guardian_result.get('risk_label') == 'HIGH':
+        _, law_text_tight = get_relevant_law(incident_key)
+        heal_prompt = f"""You are a FIFA VAR referee. Base your verdict ONLY on the FIFA law text below.
+Do not introduce any rules, clauses, or facts not explicitly stated in it.
+
+FIFA LAW (ground truth — cite only this):
+{law_text_tight[:800]}
+
+VIDEO EVIDENCE (CV signals):
+{frame_narrative}
+
+Respond with ONLY valid JSON:
+{{
+  "incident_type": "handball | foul | tackle | offside | free_kick | simulation | no_incident",
+  "what_happened": "1 precise sentence grounded in the CV signals",
+  "law_applied": "Law 11 – Offside OR Law 12 – Fouls and Misconduct",
+  "law_number": "Law 11 OR Law 12",
+  "correct_decision": "FOUL | NO FOUL | HANDBALL | NO HANDBALL | OFFSIDE | ONSIDE | FREE KICK AWARDED | YELLOW CARD | RED CARD | PENALTY | NO REVIEW NEEDED",
+  "var_action": "OVERTURNED | UPHELD | NO REVIEW NEEDED",
+  "reasoning": "2 sentences citing the specific clause and how CV evidence supports it",
+  "confidence": 0.00
+}}"""
+        try:
+            raw2 = client.chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "user", "content": heal_prompt}],
+                max_tokens=300,
+            ).choices[0].message.content.strip()
+            s2, e2 = raw2.find('{'), raw2.rfind('}') + 1
+            verdict2 = json.loads(raw2[s2:e2])
+            ln2 = str(verdict2.get('law_number', ''))
+            verdict2['law_number'] = 'Law 11' if '11' in ln2 else 'Law 12'
+            verdict = verdict2
+            guardian_result2 = _guardian_check(
+                verdict_text=verdict.get('reasoning', '') + ' ' + verdict.get('what_happened', ''),
+                law_context=law_ctx,
+                rag_score=top_rag_score,
+            )
+            guardian_result2['auto_corrected'] = True
+            guardian_result2['original_risk'] = 'HIGH'
+            guardian_result = guardian_result2
+        except Exception as heal_err:
+            print(f'[Guardian Auto-Heal] Regeneration failed: {heal_err}')
+            guardian_result['auto_corrected'] = False
+    else:
+        guardian_result['auto_corrected'] = False
+
     return {
         **verdict,
         'limitations': LIMITATIONS['var_oracle'],
