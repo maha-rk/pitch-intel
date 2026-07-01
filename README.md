@@ -1,6 +1,5 @@
 # Pitch Intel — AI World Cup Analysis Platform
 
-> **IBM SkillsBuild AI Builders Challenge · June 2026**
 > Built with IBM Granite · IBM Docling · IBM Context Forge (MCP) · StatsBomb · YOLOv8 · FAISS · Next.js 16
 
 [![Tests](https://github.com/maha-rk/pitch-intel/actions/workflows/test.yml/badge.svg)](https://github.com/maha-rk/pitch-intel/actions/workflows/test.yml)
@@ -61,7 +60,7 @@ Every module serves one human-centered goal: help people *understand* the match 
 |---|--------|-------------|----------|
 | 01 | **VAR Oracle** | Upload a match clip. YOLOv8 detects players and ball frame-by-frame. Overlap scoring classifies the incident (foul / handball / offside / tackle). Verdict cross-referenced with the exact FIFA law clause — parsed by IBM Docling from the official PDF. The law text is shown in the UI alongside the CV evidence. | YOLOv8 · IBM Docling · IBM Granite |
 | 02 | **Tactical Lens** | xG flow chart, shot map (SVG pitch), pass network graph, player position heatmap, auto-detected formation (e.g. 4-3-3) from average position clustering. Three explanation modes: Beginner, Fan, Coach. Penalty analysis tab. "Why did this match end this way?" verdict from Granite. | IBM Granite · StatsBomb events |
-| 03 | **Pitch Agent** | IBM Granite agent with structured tool use. Calls `get_momentum`, `get_xg_flow`, `get_key_moments`, `get_pass_network`, `get_emotion_arc`, `search_players` dynamically. Shows the full reasoning chain — each tool call is a collapsible badge judges can expand to verify the raw StatsBomb data Granite received before answering. | IBM Granite · Tool Use · StatsBomb |
+| 03 | **Pitch Agent** | IBM Granite agent with structured tool use. Calls `get_momentum`, `get_xg_flow`, `get_key_moments`, `get_pass_network`, `get_emotion_arc`, `search_players` dynamically. Shows the full reasoning chain — each tool call is a collapsible badge you can expand to verify the raw StatsBomb data Granite received before answering. | IBM Granite · Tool Use · StatsBomb |
 | 04 | **Scout Eye** | Natural-language player search ("clinical striker high conversion rate") across 6,000+ World Cup players. Returns top 5 with radar charts and IBM Granite scouting reports. Side-by-side head-to-head comparison when 2 results are selected. | FAISS · sentence-transformers · IBM Granite |
 | 05 | **Referee Lens** | Aggregates all 128 World Cup matches by referee. Per referee: foul symmetry index (how evenly fouls were called between both teams), home bias index, card and foul averages, match-by-match log. IBM Granite writes a 3-paragraph consistency report citing real numbers. | IBM Granite · StatsBomb |
 | 06 | **Match Explainer** | Pre- and post-match briefings grounded in real StatsBomb stats: shots, xG, possession, key moments. IBM Granite writes the narrative from actual numbers, not from training approximations. | IBM Granite · StatsBomb |
@@ -131,7 +130,7 @@ IBM Granite + 6 tool definitions
 Response + full tool-call log returned to frontend
 ```
 
-The frontend renders each tool call as an expandable badge — judges can verify which StatsBomb data Granite fetched and what it returned before forming its answer. The reasoning chain is not hidden.
+The frontend renders each tool call as an expandable badge — you can verify which StatsBomb data Granite fetched and what it returned before forming its answer. The reasoning chain is not hidden.
 
 ### Model Context Protocol (MCP) gateway
 
@@ -198,22 +197,9 @@ Two IBM Granite personas — **The Advocate** and **The Skeptic** — receive th
 
 ---
 
-## Judging Criteria Alignment
+## Walkthroughs
 
-| Criterion | How Pitch Intel addresses it |
-|-----------|------------------------------|
-| **Technical Execution** | 11 modules · FastAPI + Next.js 16 · **21/21 tests passing (CI green)** · IBM Docling RAG: **10/10 correct FIFA Law chapters retrieved** · Pitch Agent: **20/20 tool calls routed, zero hallucinated** · FAISS: 6,147 players indexed, <5ms query · Monte Carlo: 10,000 xG trials at seed=42, mathematically reproducible · VAR pipeline: YOLOv8 → Docling → FAISS → Granite in a single inference pass |
-| **Innovation** | **CV → Document Intelligence → LLM** in one grounded verdict pipeline — three AI disciplines on a single incident · Dugout Brief: spoken match narration in **21 languages** for blind/low-vision fans, unserved by any football broadcast product · Alter Ego: win-probability *shift* from a 10,000-run Monte Carlo on real xG values — explainability, not prediction · Tactical Lens: Beginner/Fan/Coach modes from identical StatsBomb data, zero extra engineering per mode |
-| **Challenge Fit** | Built exclusively for the FIFA World Cup · **128 WC matches · ~3.5M events · 6,147 players** (StatsBomb open data, 2018 + 2022) · Live WC 2026 scores in navbar via ESPN API, auto-refreshed every 60s · 11 modules each answer a question fans, broadcasters, or analysts ask during 90 minutes · Referee Lens surfaces foul symmetry + home bias per referee — previously only accessible via Wyscout/Opta at thousands of dollars per season |
-| **Implementation & Feasibility** | `pip install -r requirements.txt` → `uvicorn backend.main:app` → `npm run dev` — all 11 modules live · No proprietary data, no mandatory paid API · IBM watsonx.ai primary (`ibm/granite-3-3-8b-instruct`); Ollama offline fallback (`granite3.3:8b`) — 1 env var, 0 code changes · FAISS + Docling RAG indexes pre-warm at startup; all modules ready before first request |
-| **Use of IBM Technology** | **IBM Granite**: all 11 modules through 1 auditable inference layer (`backend/granite.py`) — single path, no module has its own client · **IBM Docling**: FIFA Laws PDF → 17 semantically-indexed chunks → FAISS; retrieved chunk shown verbatim in VAR verdict UI · **IBM Context Forge (MCP)**: 6 typed StatsBomb tools at `backend/mcp_server.py` (`get_momentum`, `get_xg_flow`, `get_key_moments`, `get_pass_network`, `get_emotion_arc`, `search_players`) · **IBM Bob**: primary coding assistant throughout · **LangFlow**: Debate's 3-agent pipeline exported as `flows/pitch_debate_flow.json` |
-| **Trust & Transparency** | "What this can't tell you" panel on every module (`backend/transparency.py`) — module-specific limitations, not generic disclaimers · Pitch Agent: every tool call is an expandable badge showing raw StatsBomb JSON before the answer · VAR Oracle: Docling law chunk shown verbatim + FAISS similarity score alongside every verdict · Evidence sufficiency computed from legal citation density in each answer (range: 22–97%) — never hardcoded |
 
----
-
-## Demo Scenarios
-
-Step-by-step walkthroughs designed for judges to verify the core claims in under 10 minutes.
 
 **1. VAR Oracle — Docling RAG + Computer Vision**
 - Navigate to **VAR Oracle** → type "Was it a handball if the ball hit the player's arm raised above the shoulder?" → hit Ask.
@@ -272,7 +258,7 @@ Step-by-step walkthroughs designed for judges to verify the core claims in under
 
 **Visual hierarchy matches decision order.** Score and teams appear first. xG insight appears second — it is the single most predictive metric and the most common question from a fan ("did the score reflect the play?"). Supporting data comes last.
 
-**The evidence is always visible.** In VAR Oracle, the law chunk Docling parsed is shown. In Pitch Agent, every tool call and its raw output is expandable. In Tactical Lens, the xG and momentum numbers that fed the Granite verdict are right above the verdict. A judge should never have to take the AI output on faith — they can inspect what went in.
+**The evidence is always visible.** In VAR Oracle, the law chunk Docling parsed is shown. In Pitch Agent, every tool call and its raw output is expandable. In Tactical Lens, the xG and momentum numbers that fed the Granite verdict are right above the verdict. You should never have to take the AI output on faith — you can inspect what went in.
 
 **Honest limitations on every verdict.** Each AI output ships with an explicit "What this can't tell you" panel naming the blind spots of the data and method — surfacing uncertainty instead of implying false confidence.
 
@@ -349,7 +335,7 @@ The production inference target is `ibm/granite-3-3-8b-instruct` via watsonx.ai 
 StatsBomb open data does not expose lineup formations directly. Sorting players by average x-coordinate, dropping the deepest (goalkeeper proxy), and finding the two largest positional gaps gives a reliable heuristic. The code returns `'?'` when data is insufficient — explicitly acknowledged as a heuristic, not presented as ground truth.
 
 **No mocked AI outputs — every Granite response is generated live from real StatsBomb data.**
-No hardcoded responses, no pre-generated reports, no canned examples. If the data pipeline fails, the AI output fails — there is no fallback to fabricated plausibility. Judges can verify this: the Pitch Agent module exposes every tool call and the raw data it returned before Granite formed its answer.
+No hardcoded responses, no pre-generated reports, no canned examples. If the data pipeline fails, the AI output fails — there is no fallback to fabricated plausibility. The Pitch Agent module exposes every tool call and the raw data it returned before Granite formed its answer.
 
 ---
 
