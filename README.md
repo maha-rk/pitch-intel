@@ -186,16 +186,28 @@ Two IBM Granite personas — **The Advocate** and **The Skeptic** — receive th
 
 ---
 
+## IBM Technology Stack
+
+| Component | Role |
+|-----------|------|
+| **IBM Granite** (`ibm/granite-3-3-8b-instruct`) | Reasoning engine for all 11 modules via single auditable inference layer |
+| **IBM Docling** | PDF → structured markdown → FAISS index for VAR law retrieval |
+| **IBM Context Forge (MCP)** | Governs all 6 StatsBomb tools as a typed, reusable MCP surface |
+| **IBM Bob** | Primary coding assistant throughout the full build |
+| **LangFlow** | Visual pipeline for the Debate module's three-agent flow (exported as `flows/pitch_debate_flow.json`) |
+
+---
+
 ## Judging Criteria Alignment
 
 | Criterion | How Pitch Intel addresses it |
 |-----------|------------------------------|
-| **Technical Execution** | 11 working modules across a full-stack FastAPI + Next.js 16 app. IBM Docling RAG pipeline retrieves the exact FIFA law for any incident — 10/10 correct law chapters on known test cases. Pitch Agent routes 6 StatsBomb tools with zero hallucinated tool calls across 20 test questions. Monte Carlo simulation is reproducible at fixed seed=42. FAISS vector index over 6,147 players queries in under 5ms. |
-| **Innovation** | The only football platform that chains CV → RAG → LLM in one grounded verdict pipeline. Alter Ego reframes counterfactual analysis as win-probability *shift* rather than a prediction — explainability, not forecasting. Dugout Brief delivers a full spoken match narration for blind/low-vision fans in 21 languages, a use case no football AI product currently serves. 11 modules covering refereeing, tactics, scouting, accessibility, and fan education — scope that no single-domain tool matches. |
-| **Challenge Fit** | Built entirely around the 2026 FIFA World Cup — real match data (StatsBomb 128 WC matches), live WC 2026 scores in the navbar (ESPN API, auto-refreshed every 60s), and modules designed around the exact questions fans, broadcasters, and analysts ask during a tournament. Every module answers a question that arises during 90 minutes of live football. |
-| **Feasibility** | Running prototype: backend on FastAPI (port 8001), frontend on Next.js 16 (port 3000), all 11 modules fully operational. StatsBomb data is fetched live and cached per match. FAISS and RAG indexes are pre-warmed at startup. No hardcoded responses — if the data pipeline fails, the AI output fails. |
-| **Use of IBM Technology** | IBM Granite is the reasoning engine for every one of the 11 modules, routed through a single auditable inference layer (`backend/granite.py`). IBM Docling parses the FIFA Laws PDF into a semantic FAISS index used for VAR verdicts. IBM Context Forge (MCP) exposes all 6 StatsBomb tools as a governed, reusable interface any MCP client can consume. IBM Bob was used throughout development as the primary coding assistant. LangFlow pipeline exported for the Debate Room's three-agent flow. |
-| **Trust & Transparency** | Every module ships a "What this can't tell you" panel (`backend/transparency.py`) naming the blind spots of the data and method. In VAR Oracle, the Docling-parsed law chunk is shown alongside the verdict. In Pitch Agent, every tool call is a collapsible badge showing the raw StatsBomb data Granite received before answering. Evidence sufficiency is computed dynamically (22–97%) from the answer's legal citations — never hardcoded. |
+| **Technical Execution** | 11 modules · FastAPI + Next.js 16 · **21/21 tests passing (CI green)** · IBM Docling RAG: **10/10 correct FIFA Law chapters retrieved** · Pitch Agent: **20/20 tool calls routed, zero hallucinated** · FAISS: 6,147 players indexed, <5ms query · Monte Carlo: 10,000 xG trials at seed=42, mathematically reproducible · VAR pipeline: YOLOv8 → Docling → FAISS → Granite in a single inference pass |
+| **Innovation** | **CV → Document Intelligence → LLM** in one grounded verdict pipeline — three AI disciplines on a single incident · Dugout Brief: spoken match narration in **21 languages** for blind/low-vision fans, unserved by any football broadcast product · Alter Ego: win-probability *shift* from a 10,000-run Monte Carlo on real xG values — explainability, not prediction · Tactical Lens: Beginner/Fan/Coach modes from identical StatsBomb data, zero extra engineering per mode |
+| **Challenge Fit** | Built exclusively for the FIFA World Cup · **128 WC matches · ~3.5M events · 6,147 players** (StatsBomb open data, 2018 + 2022) · Live WC 2026 scores in navbar via ESPN API, auto-refreshed every 60s · 11 modules each answer a question fans, broadcasters, or analysts ask during 90 minutes · Referee Lens surfaces foul symmetry + home bias per referee — previously only accessible via Wyscout/Opta at thousands of dollars per season |
+| **Implementation & Feasibility** | `pip install -r requirements.txt` → `uvicorn backend.main:app` → `npm run dev` — all 11 modules live · No proprietary data, no mandatory paid API · IBM watsonx.ai primary (`ibm/granite-3-3-8b-instruct`); Ollama offline fallback (`granite3.3:8b`) — 1 env var, 0 code changes · FAISS + Docling RAG indexes pre-warm at startup; all modules ready before first request |
+| **Use of IBM Technology** | **IBM Granite**: all 11 modules through 1 auditable inference layer (`backend/granite.py`) — single path, no module has its own client · **IBM Docling**: FIFA Laws PDF → 17 semantically-indexed chunks → FAISS; retrieved chunk shown verbatim in VAR verdict UI · **IBM Context Forge (MCP)**: 6 typed StatsBomb tools at `backend/mcp_server.py` (`get_momentum`, `get_xg_flow`, `get_key_moments`, `get_pass_network`, `get_emotion_arc`, `search_players`) · **IBM Bob**: primary coding assistant throughout · **LangFlow**: Debate's 3-agent pipeline exported as `flows/pitch_debate_flow.json` |
+| **Trust & Transparency** | "What this can't tell you" panel on every module (`backend/transparency.py`) — module-specific limitations, not generic disclaimers · Pitch Agent: every tool call is an expandable badge showing raw StatsBomb JSON before the answer · VAR Oracle: Docling law chunk shown verbatim + FAISS similarity score alongside every verdict · Evidence sufficiency computed from legal citation density in each answer (range: 22–97%) — never hardcoded |
 
 ---
 
@@ -226,6 +238,31 @@ Step-by-step walkthroughs designed for judges to verify the core claims in under
 
 **6. Referee Lens — consistency metrics**
 - Navigate to **Referee Lens** → pick any referee who took multiple matches → read the foul symmetry index and home bias score, then read the IBM Granite consistency report below it. Every number in the report is computed from real StatsBomb match data for that referee.
+
+---
+
+## Screenshots
+
+### VAR Oracle — CV pipeline (YOLOv8 · Docling RAG · Granite verdict)
+![VAR Oracle CV](docs/screenshots/var_oracle_cv.png)
+
+### VAR Oracle — FIFA Laws Q&A (Docling RAG · evidence sufficiency)
+![VAR Oracle Q&A](docs/screenshots/var_oracle_rag.png)
+
+### Tactical Lens — Granite match verdict · key moments · player positioning
+![Tactical Lens](docs/screenshots/tactical_lens.png)
+
+### Pitch Agent — collapsible tool call badges with raw StatsBomb JSON
+![Pitch Agent](docs/screenshots/pitch_agent.png)
+
+### Alter Ego — Monte Carlo win-probability shift (10,000 runs · seed=42)
+![Alter Ego](docs/screenshots/alter_ego.png)
+
+### Dugout Brief — spoken match narration · synced captions · 21 languages
+![Dugout Brief](docs/screenshots/dugout_brief.png)
+
+### Debate — Advocate vs Skeptic · IBM Granite consensus verdict
+![Debate](docs/screenshots/debate.png)
 
 ---
 

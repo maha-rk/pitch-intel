@@ -224,3 +224,8 @@ __marimo__/
 mlh-fellowship-portfolio-site/
 backend/var_oracle/fifa_laws.pdf
 docs/screenshots/
+
+# IDE tool config files
+CLAUDE.md
+AGENTS.md
+.DS_Store
