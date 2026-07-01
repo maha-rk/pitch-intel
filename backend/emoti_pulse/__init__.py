@@ -72,7 +72,7 @@ def _process_events(events: pd.DataFrame, home_team: str, away_team: str) -> tup
                 add_window(m, 8)
 
         elif t == 'Foul Committed':
-            card = _safe_name(ev.get('foul_committed_card')) or _safe_name(ev.get('bad_behaviour_card'))
+            card = _safe_name(ev.get('foul_committed_card'))
             if 'Red' in card:
                 add_window(m, 65, f'RED CARD – {player}')
                 timeline.append({'minute': m, 'type': 'red_card', 'text': f"{m}' RED CARD – {player} ({team})"})
@@ -122,7 +122,7 @@ def get_emotion_arc(match_id: int, home_team: str = '', away_team: str = '') -> 
 
     windows, timeline, final_score = _process_events(events, home_team, away_team)
 
-    max_minute = max(windows.keys(), default=90) + 5
+    max_minute = max(windows.keys(), default=90)
     arc = []
     for minute in range(0, max_minute + 5, 5):
         w = windows.get(minute, {})

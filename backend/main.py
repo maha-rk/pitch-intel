@@ -220,9 +220,12 @@ def var_oracle_ask(body: dict):
             max_tokens=320
         )
         answer = resp.choices[0].message.content or ''
-        has_law_ref = any(f'Law {i}' in answer or f'law {i}' in answer for i in range(1, 18))
+        import re as _re
+        # Match "Law N" only as a whole token — prevents "Law 1" matching inside "Law 17"
+        found_laws = [int(m) for m in _re.findall(r'\bLaw\s+(\d+)\b', answer, _re.IGNORECASE)]
+        has_law_ref = bool(found_laws)
         completeness = 'COMPLETE' if has_law_ref else 'PARTIAL'
-        law_ref = next((f'Law {i}' for i in range(1, 18) if f'Law {i}' in answer or f'law {i}' in answer), None)
+        law_ref = f'Law {found_laws[0]}' if found_laws else None
         return {
             'answer': answer,
             'completeness': completeness,

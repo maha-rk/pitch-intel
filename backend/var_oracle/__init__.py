@@ -487,7 +487,7 @@ Respond with ONLY valid JSON — no prose before or after:
   "correct_decision": "FOUL | NO FOUL | HANDBALL | NO HANDBALL | OFFSIDE | ONSIDE | FREE KICK AWARDED | YELLOW CARD | RED CARD | PENALTY | NO REVIEW NEEDED",
   "var_action": "OVERTURNED | UPHELD | NO REVIEW NEEDED",
   "reasoning": "2 sentences citing the specific clause and how the CV evidence supports it",
-  "confidence": 0.00
+  "confidence": <float 0.00–1.00 reflecting how clearly the CV signals support your incident_type; high when signals are unambiguous, low when evidence is weak or mixed>
 }}"""
 
     raw = client.chat.completions.create(
@@ -505,6 +505,9 @@ Respond with ONLY valid JSON — no prose before or after:
             verdict['law_number'] = 'Law 11'
         else:
             verdict['law_number'] = 'Law 12'
+        # If Granite still returns 0 or omits confidence, leave it as-is for display
+        if not isinstance(verdict.get('confidence'), (int, float)):
+            verdict['confidence'] = 0.5
     except Exception:
         verdict = {
             'incident_type': 'no_incident',

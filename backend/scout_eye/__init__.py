@@ -83,7 +83,7 @@ def _generate_report(p, desc, lang='en'):
         ],
         'scouting_report': report.choices[0].message.content,
         'radar': {
-            'shots': min(shots, 150),
+            'shots': min(int(shots), 150),
             'goals': min(int(p['goals']), 30),
             'conversion': float(p['conversion_rate']),
             'xg_quality': round(float(p['avg_xg']) * 100, 1),
